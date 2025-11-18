@@ -140,12 +140,28 @@ export const quoteService = {
     }),
 };
 
+export interface TenantSettingsResponse {
+  tenant_id: string;
+  settings: {
+    company_name?: string;
+    company_email?: string;
+    company_phone?: string;
+    company_address?: string;
+    company_city?: string;
+    company_state?: string;
+    company_zip?: string;
+    logo_url?: string;
+    primary_color?: string;
+    secondary_color?: string;
+  };
+}
+
 export const settingsService = {
   get: (tenantId?: string) => {
     const endpoint = tenantId
       ? `${API_CONFIG.endpoints.settings.get}?tenant_id=${tenantId}`
       : API_CONFIG.endpoints.settings.get.split("?")[0]; // Remove query params if no tenantId
-    return apiClient.get<Settings[]>(endpoint);
+    return apiClient.get<TenantSettingsResponse>(endpoint);
   },
   update: (data: Partial<Settings>) =>
     apiClient.put<Settings>(API_CONFIG.endpoints.settings.update, data),
