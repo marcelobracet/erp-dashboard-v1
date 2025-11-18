@@ -4,10 +4,9 @@ import React, { useState, useEffect } from 'react';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Table } from '@/components/ui/Table';
-import { Modal } from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
-import { quoteService, Quote } from '@/lib/api/services';
+import { quoteService, Quote, Client } from '@/lib/api/services';
 import { usePermissions } from '@/hooks/usePermissions';
 import { ProtectedComponent } from '@/components/auth/ProtectedComponent';
 import { formatDate, formatCurrency } from '@/lib/utils/format';
@@ -22,8 +21,6 @@ const statusColors: Record<string, string> = {
 function QuotesContent() {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const { hasPermission } = usePermissions();
 
@@ -57,7 +54,7 @@ function QuotesContent() {
     {
       key: 'client' as keyof Quote,
       header: 'Cliente',
-      render: (value: any) => value?.name || '-',
+      render: (value: Client | undefined) => value?.name || '-',
     },
     {
       key: 'total' as keyof Quote,
@@ -111,10 +108,7 @@ function QuotesContent() {
             <p className="text-gray-600 dark:text-gray-400 mt-1">Gerencie seus orçamentos e propostas</p>
           </div>
           <ProtectedComponent resource="quotes" action="create">
-            <Button onClick={() => {
-              setSelectedQuote(null);
-              setIsModalOpen(true);
-            }}>
+            <Button>
               Novo Orçamento
             </Button>
           </ProtectedComponent>

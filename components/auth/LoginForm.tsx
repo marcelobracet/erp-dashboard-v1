@@ -44,9 +44,10 @@ export default function LoginForm() {
 
     try {
       await login(email, password);
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao fazer login. Verifique suas credenciais.';
       setErrors({
-        general: error.message || 'Erro ao fazer login. Verifique suas credenciais.',
+        general: errorMessage,
       });
     } finally {
       setIsLoading(false);

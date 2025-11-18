@@ -1,6 +1,6 @@
 'use client';
 
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useState, useEffect } from 'react';
 import { usePermissions } from '@/hooks/usePermissions';
 import { UserRole } from '@/hooks/usePermissions';
 
@@ -20,6 +20,17 @@ export function ProtectedComponent({
   fallback = null 
 }: ProtectedComponentProps) {
   const { hasPermission, hasRole } = usePermissions();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // During SSR, always render children to prevent hydration mismatch
+  // The actual permission check will happen after mount
+  if (!mounted) {
+    return <>{children}</>;
+  }
 
   if (roles && !hasRole(roles)) {
     return <>{fallback}</>;

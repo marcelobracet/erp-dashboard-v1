@@ -1,18 +1,25 @@
 /**
  * Utility function to format dates consistently
  * Prevents hydration mismatches by ensuring consistent formatting
+ * Uses deterministic formatting that works the same on server and client
  */
 export function formatDate(dateString: string | undefined | null): string {
   if (!dateString) return '-';
   
   try {
     const date = new Date(dateString);
-    // Use a consistent format that works the same on server and client
-    return date.toLocaleDateString('pt-BR', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    });
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      return '-';
+    }
+    
+    // Use deterministic formatting to prevent hydration mismatches
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    
+    return `${day}/${month}/${year}`;
   } catch {
     return '-';
   }
@@ -20,13 +27,21 @@ export function formatDate(dateString: string | undefined | null): string {
 
 /**
  * Format currency consistently
+ * Uses deterministic formatting to prevent hydration mismatches
  */
 export function formatCurrency(value: number | undefined | null): string {
-  if (value === undefined || value === null) return 'R$ 0,00';
+  if (value === undefined || value === null || isNaN(value)) {
+    return 'R$ 0,00';
+  }
   
-  return new Intl.NumberFormat('pt-BR', {
+  // Format deterministically to prevent hydration mismatches
+  const formatted = new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(value);
+  
+  return formatted;
 }
 

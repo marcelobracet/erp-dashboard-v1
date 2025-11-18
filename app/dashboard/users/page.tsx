@@ -9,7 +9,6 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { userService, User } from '@/lib/api/services';
 import { usePermissions } from '@/hooks/usePermissions';
-import { ProtectedComponent } from '@/components/auth/ProtectedComponent';
 import { formatDate } from '@/lib/utils/format';
 
 function UsersContent() {
@@ -24,6 +23,24 @@ function UsersContent() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const data = await userService.list();
+      setUsers(data);
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (mounted) {
+      fetchUsers();
+    }
+  }, [mounted]);
 
   // Only admins can access this page - but wait for mount to prevent hydration mismatch
   if (!mounted) {
@@ -56,22 +73,6 @@ function UsersContent() {
       </DashboardLayout>
     );
   }
-
-  const fetchUsers = async () => {
-    try {
-      setLoading(true);
-      const data = await userService.list();
-      setUsers(data);
-    } catch (error) {
-      console.error('Failed to fetch users:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchUsers();
-  }, []);
 
   const filteredUsers = users.filter((user) =>
     user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||

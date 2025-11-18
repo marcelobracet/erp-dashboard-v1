@@ -8,7 +8,6 @@ import Input from '@/components/ui/Input';
 import { settingsService, Settings } from '@/lib/api/services';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/AuthContext';
-import { ProtectedComponent } from '@/components/auth/ProtectedComponent';
 
 function SettingsContent() {
   const [settings, setSettings] = useState<Settings[]>([]);
@@ -26,17 +25,20 @@ function SettingsContent() {
       // Handle different response formats
       let settingsArray: Settings[] = [];
       
-      if (Array.isArray(data)) {
-        settingsArray = data;
-      } else if (data && typeof data === 'object') {
+      // Type assertion to handle different response formats
+      const response = data as Settings[] | { data?: Settings[] } | { settings?: Settings[] } | Settings;
+      
+      if (Array.isArray(response)) {
+        settingsArray = response;
+      } else if (response && typeof response === 'object') {
         // If API returns an object with a data property
-        if ('data' in data && Array.isArray(data.data)) {
-          settingsArray = data.data;
-        } else if ('settings' in data && Array.isArray(data.settings)) {
-          settingsArray = data.settings;
+        if ('data' in response && Array.isArray(response.data)) {
+          settingsArray = response.data;
+        } else if ('settings' in response && Array.isArray(response.settings)) {
+          settingsArray = response.settings;
         } else {
           // If it's a single setting object, wrap it in an array
-          settingsArray = [data as Settings];
+          settingsArray = [response as Settings];
         }
       }
       
@@ -51,6 +53,7 @@ function SettingsContent() {
 
   useEffect(() => {
     fetchSettings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.tenant_id]);
 
   const handleSave = async () => {

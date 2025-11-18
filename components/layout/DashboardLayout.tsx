@@ -89,14 +89,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Prevent hydration mismatch by only rendering after mount
   useEffect(() => {
     setMounted(true);
-    setCurrentDate(new Date().toLocaleDateString('pt-BR'));
+    // Use deterministic date formatting to prevent hydration mismatch
+    const now = new Date();
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = now.getFullYear();
+    setCurrentDate(`${day}/${month}/${year}`);
   }, []);
 
-  const filteredNavigation = navigation.filter((item) => {
-    if (item.roles && !hasRole(item.roles)) return false;
-    if (item.resource && !canAccess(item.resource)) return false;
-    return true;
-  });
+  // Calculate filteredNavigation only after mount to prevent hydration mismatch
+  const filteredNavigation = mounted
+    ? navigation.filter((item) => {
+        if (item.roles && !hasRole(item.roles)) return false;
+        if (item.resource && !canAccess(item.resource)) return false;
+        return true;
+      })
+    : []; // Empty array during SSR
 
   // Show loading state during SSR to prevent hydration mismatch
   if (!mounted) {
