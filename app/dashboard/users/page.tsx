@@ -47,7 +47,7 @@ function UsersContent() {
     return (
       <DashboardLayout>
         <div className="min-h-screen flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
         </div>
       </DashboardLayout>
     );
@@ -56,7 +56,7 @@ function UsersContent() {
   if (!hasRole('admin')) {
     return (
       <DashboardLayout>
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-12 text-center">
+        <div className="app-card p-12 text-center">
           <svg
             className="mx-auto h-12 w-12 text-red-400"
             fill="none"
@@ -65,8 +65,8 @@ function UsersContent() {
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
-          <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">Acesso Negado</h3>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          <h3 className="mt-2 text-sm font-medium text-foreground">Acesso Negado</h3>
+          <p className="mt-1 text-sm text-text-80">
             Você não tem permissão para acessar esta página.
           </p>
         </div>
@@ -85,8 +85,8 @@ function UsersContent() {
       header: 'Nome',
       render: (value: string, row: User) => (
         <div>
-          <div className="font-medium text-gray-900 dark:text-white">{value}</div>
-          <div className="text-sm text-gray-500 dark:text-gray-400">{row.email}</div>
+          <div className="font-medium text-foreground">{value}</div>
+          <div className="text-sm text-text-60">{row.email}</div>
         </div>
       ),
     },
@@ -94,7 +94,7 @@ function UsersContent() {
       key: 'role' as keyof User,
       header: 'Função',
       render: (value: string) => (
-        <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 capitalize">
+        <span className="px-2 py-1 rounded-full text-xs font-medium bg-accent-15 text-accent-muted capitalize">
           {value}
         </span>
       ),
@@ -128,8 +128,8 @@ function UsersContent() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Usuários</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">Gerencie os usuários do sistema</p>
+            <h1 className="text-3xl font-bold text-foreground">Usuários</h1>
+            <p className="text-text-80 mt-1">Gerencie os usuários do sistema</p>
           </div>
           {hasPermission('users', 'create') && (
             <Button onClick={() => {
@@ -142,7 +142,7 @@ function UsersContent() {
         </div>
 
         {/* Search */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4">
+        <div className="app-card p-4">
           <Input
             placeholder="Buscar por nome ou email..."
             value={searchTerm}
@@ -168,7 +168,7 @@ function UsersContent() {
                     e.stopPropagation();
                     handleEdit(user);
                   }}
-                  className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                  className="text-accent-detail hover:text-accent-muted"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -222,12 +222,12 @@ function UsersContent() {
             <Input label="Nome" defaultValue={selectedUser?.name || ''} />
             <Input label="Email" type="email" defaultValue={selectedUser?.email || ''} />
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-text-80 mb-2">
                 Função
               </label>
               <select
                 defaultValue={selectedUser?.role || 'user'}
-                className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-3 rounded-xl border border-glass-10 bg-glass-5 text-foreground focus:outline-none focus:ring-2 focus:ring-accent-20 focus:border-accent-hover"
               >
                 <option value="user">Usuário</option>
                 <option value="admin">Administrador</option>

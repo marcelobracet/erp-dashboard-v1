@@ -1,28 +1,94 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Base */
+  --background: #09090b; /* zinc-950 */
+  --foreground: #ffffff; /* white */
+
+  /* Overlays */
+  --overlay-90: rgba(0, 0, 0, 0.9); /* black/90 */
+  --overlay-40: rgba(0, 0, 0, 0.4); /* black/40 */
+
+  /* Text */
+  --text-80: rgba(255, 255, 255, 0.8); /* white/80 */
+  --text-60: rgba(255, 255, 255, 0.6); /* white/60 */
+
+  /* Glass surfaces / borders */
+  --glass-5: rgba(255, 255, 255, 0.05);
+  --glass-10: rgba(255, 255, 255, 0.1);
+  --glass-15: rgba(255, 255, 255, 0.15);
+
+  /* Accent (marmoraria) */
+  --amber-500: #f59e0b;
+  --amber-400: #fbbf24;
+  --amber-300: #fcd34d;
+  --amber-200: #fde68a;
+
+  --amber-500-15: rgba(245, 158, 11, 0.15);
+  --amber-500-20: rgba(245, 158, 11, 0.2);
+  --amber-400-90: rgba(251, 191, 36, 0.9);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-text-80: var(--text-80);
+  --color-text-60: var(--text-60);
+  --color-overlay-90: var(--overlay-90);
+  --color-overlay-40: var(--overlay-40);
+  --color-glass-5: var(--glass-5);
+  --color-glass-10: var(--glass-10);
+  --color-glass-15: var(--glass-15);
+
+  /* Accent colors */
+  --color-amber-500: var(--amber-500);
+  --color-amber-400: var(--amber-400);
+  --color-amber-300: var(--amber-300);
+  --color-amber-200: var(--amber-200);
+  --color-amber-500-15: var(--amber-500-15);
+  --color-amber-500-20: var(--amber-500-20);
+  --color-amber-400-90: var(--amber-400-90);
+
+  /* Semantic accent aliases */
+  --color-accent: var(--amber-500);
+  --color-accent-hover: var(--amber-400);
+  --color-accent-detail: var(--amber-300);
+  --color-accent-muted: var(--amber-200);
+  --color-accent-15: var(--amber-500-15);
+  --color-accent-20: var(--amber-500-20);
+  --color-accent-90: var(--amber-400-90);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  color-scheme: dark;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+@layer components {
+  .app-card {
+    @apply rounded-xl bg-glass-5 border border-glass-10 backdrop-blur-xl shadow-lg;
+  }
+
+  .app-header {
+    @apply bg-glass-5 border-b border-glass-10 backdrop-blur-xl;
+  }
+}
+
+@layer utilities {
+  .app-overlay-90 {
+    @apply bg-overlay-90;
+  }
+
+  .app-overlay-40 {
+    @apply bg-overlay-40;
+  }
 }
 
 @keyframes blob {

@@ -3,17 +3,26 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { authService, UserProfile } from '@/lib/api/auth';
 import { useRouter } from 'next/navigation';
+import { isAuthDisabled } from '@/lib/featureFlags';
 
 interface AuthContextType {
   user: UserProfile | null;
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
+  register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const AUTH_DISABLED_USER: UserProfile = {
+  id: 'auth-disabled',
+  email: 'auth-disabled@local',
+  name: 'Admin (auth desativada)',
+  role: 'admin',
+};
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -27,6 +36,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const refreshUser = useCallback(async () => {
+    if (isAuthDisabled()) {
+      setUser((prev) => prev ?? AUTH_DISABLED_USER);
+      setIsLoading(false);
+      return;
+    }
+
     // Only fetch user if we're on the client side and authenticated
     if (typeof window === 'undefined' || !authService.isAuthenticated()) {
       setIsLoading(false);
@@ -54,6 +69,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
+      if (isAuthDisabled()) {
+        setUser((prev) => prev ?? AUTH_DISABLED_USER);
+        router.push('/dashboard');
+        return;
+      }
+
       const response = await authService.login({ email, password });
       
       if (response.user) {
@@ -63,6 +84,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       router.push('/dashboard');
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const register = async (name: string, email: string, password: string) => {
+    try {
+      if (isAuthDisabled()) {
+        setUser((prev) => prev ?? AUTH_DISABLED_USER);
+        router.push('/dashboard');
+        return;
+      }
+
+      const response = await authService.register({ name, email, password });
+
+      if (response.access_token) {
+        if (response.user) {
+          setUser(response.user as UserProfile);
+        } else {
+          await refreshUser();
+        }
+
+        router.push('/dashboard');
+        return;
+      }
+
+      await login(email, password);
     } catch (error) {
       throw error;
     }
@@ -79,8 +127,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         user,
         isLoading,
-        isAuthenticated: !!user,
+        isAuthenticated: isAuthDisabled() || !!user,
         login,
+        register,
         logout,
         refreshUser,
       }}

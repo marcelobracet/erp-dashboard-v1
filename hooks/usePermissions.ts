@@ -1,6 +1,7 @@
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
+import { isAuthDisabled } from '@/lib/featureFlags';
 
 export type UserRole = 'admin' | 'user' | string;
 
@@ -31,6 +32,7 @@ export function usePermissions() {
   const { user } = useAuth();
 
   const hasPermission = (resource: string, action: string): boolean => {
+    if (isAuthDisabled()) return true;
     if (!user?.role) return false;
     
     const permissions = rolePermissions[user.role] || [];
@@ -44,12 +46,14 @@ export function usePermissions() {
   };
 
   const hasRole = (roles: UserRole | UserRole[]): boolean => {
+    if (isAuthDisabled()) return true;
     if (!user?.role) return false;
     const rolesArray = Array.isArray(roles) ? roles : [roles];
     return rolesArray.includes(user.role);
   };
 
   const canAccess = (resource: string): boolean => {
+    if (isAuthDisabled()) return true;
     return hasAnyPermission(resource, ['read', 'create', 'update', 'delete']);
   };
 
@@ -58,7 +62,7 @@ export function usePermissions() {
     hasAnyPermission,
     hasRole,
     canAccess,
-    role: user?.role || null,
+    role: isAuthDisabled() ? 'admin' : user?.role || null,
   };
 }
 

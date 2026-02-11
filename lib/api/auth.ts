@@ -17,6 +17,23 @@ export interface LoginResponse {
   };
 }
 
+export interface RegisterRequest {
+  name: string;
+  email: string;
+  password: string;
+}
+
+export interface RegisterResponse {
+  access_token?: string;
+  refresh_token?: string;
+  user?: {
+    id: string;
+    email: string;
+    name: string;
+    role?: string;
+  };
+}
+
 export interface RefreshTokenRequest {
   refresh_token: string;
 }
@@ -65,6 +82,53 @@ export const authService = {
 
       if (error?.status === 401) {
         error.message = "Credenciais inválidas";
+      }
+
+      throw error;
+    }
+
+    const data = await response.json();
+
+    if (data.access_token) {
+      apiClient.setToken(data.access_token);
+    }
+
+    if (data.refresh_token) {
+      apiClient.setRefreshToken(data.refresh_token);
+    }
+
+    return data;
+  },
+
+  async register(payload: RegisterRequest): Promise<RegisterResponse> {
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}${
+        API_CONFIG.endpoints.users.register
+      }`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      }
+    );
+
+    if (!response.ok) {
+      let errorData: { message?: string; error?: string } = {};
+      try {
+        errorData = await response.json();
+      } catch {
+        errorData = { message: response.statusText || "Failed to register" };
+      }
+
+      const error: ApiError = {
+        message: errorData.message || errorData.error || "Failed to register",
+        status: response.status,
+      };
+
+      if (error?.status === 409) {
+        error.message = "Este email já está em uso";
       }
 
       throw error;

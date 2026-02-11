@@ -23,28 +23,28 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ) => {
     const baseStyles = `
       inline-flex items-center justify-center font-medium rounded-xl
-      transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2
+      transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-0
       disabled:opacity-50 disabled:cursor-not-allowed
       ${fullWidth ? 'w-full' : ''}
     `;
 
     const variantStyles = {
       primary: `
-        bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800
-        text-white shadow-lg shadow-blue-500/50 hover:shadow-xl hover:shadow-blue-500/60
-        focus:ring-blue-500
+        bg-accent hover:bg-accent-hover
+        text-zinc-950 shadow-[0_14px_34px_-14px_rgba(245,158,11,0.55)] hover:shadow-[0_18px_44px_-18px_rgba(251,191,36,0.6)]
+        focus:ring-accent
       `,
       secondary: `
-        bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700
-        text-gray-900 dark:text-gray-100 focus:ring-gray-500
+        bg-glass-5 hover:bg-glass-10
+        text-foreground focus:ring-glass-15
       `,
       outline: `
-        border-2 border-gray-300 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-600
-        bg-transparent text-gray-700 dark:text-gray-300 focus:ring-gray-500
+        border-2 border-glass-10 hover:border-glass-15
+        bg-transparent text-text-80 focus:ring-glass-15
       `,
       ghost: `
-        bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800
-        text-gray-700 dark:text-gray-300 focus:ring-gray-500
+        bg-transparent hover:bg-glass-10
+        text-text-80 focus:ring-glass-15
       `,
     };
 

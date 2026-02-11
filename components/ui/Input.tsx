@@ -11,13 +11,13 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="w-full">
         {label && (
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label className="block text-sm font-medium text-text-80 mb-2">
             {label}
           </label>
         )}
         <div className="relative">
           {icon && (
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-text-60">
               {icon}
             </div>
           )}
@@ -28,11 +28,11 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
               ${icon ? 'pl-11' : ''}
               ${error 
                 ? 'border-red-500 focus:border-red-500 focus:ring-red-500' 
-                : 'border-gray-300 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500'
+                : 'border-glass-10 focus:border-accent-hover focus:ring-accent-20'
               }
-              bg-white dark:bg-gray-900
-              text-gray-900 dark:text-gray-100
-              placeholder:text-gray-400 dark:placeholder:text-gray-500
+              bg-glass-5
+              text-foreground
+              placeholder:text-text-60
               focus:outline-none focus:ring-2 focus:ring-opacity-20
               disabled:opacity-50 disabled:cursor-not-allowed
               ${className}

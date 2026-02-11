@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ERP Dashboard - Sistema de Gestão Empresarial",
-  description: "Sistema ERP inteligente com interface moderna e otimizada",
+  title: "OnMarmoraria - Sistema de Gestão Empresarial",
+  description: "ERP inteligente com interface moderna e otimizada",
 };
 
 export default function RootLayout({
@@ -24,7 +24,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" className="dark">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

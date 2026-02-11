@@ -98,14 +98,10 @@ export class ApiClient {
           
           // Try to get original error message before refresh
           try {
-            const errorData = await response.clone().json().catch(() => null);
-            if (errorData) {
-              originalError = {
-                message: errorData.message || errorData.error || 'Session expired',
-                status: response.status,
-              };
-            }
-          } catch (e) {
+            const errorData: unknown = await response.clone().json().catch(() => null);
+            const message = this.extractErrorMessage(errorData) || 'Session expired';
+            originalError = { message, status: response.status };
+          } catch {
             // Ignore parsing errors
           }
 
@@ -113,7 +109,7 @@ export class ApiClient {
             await this.refreshAccessToken();
             // Retry the request with new token
             return this.request<T>(endpoint, options, false);
-          } catch (refreshError) {
+          } catch {
             this.removeToken();
             // Use original error message if available, otherwise default message
             throw originalError || { message: 'Session expired. Please login again.', status: 401 } as ApiError;
@@ -122,15 +118,15 @@ export class ApiClient {
       }
 
       if (!response.ok) {
-        let errorData: any = {};
+        let errorData: unknown = null;
         try {
           errorData = await response.json();
-        } catch (e) {
-          errorData = { message: response.statusText || 'An error occurred' };
+        } catch {
+          errorData = { message: response.statusText || 'An error occurred' } as const;
         }
 
         const error: ApiError = {
-          message: errorData.message || errorData.error || 'An error occurred',
+          message: this.extractErrorMessage(errorData) || 'An error occurred',
           status: response.status,
         };
 
@@ -150,6 +146,16 @@ export class ApiClient {
 
       throw error;
     }
+  }
+
+  private extractErrorMessage(payload: unknown): string | null {
+    if (!payload || typeof payload !== 'object') return null;
+    const rec = payload as Record<string, unknown>;
+    const message = rec.message;
+    const error = rec.error;
+    if (typeof message === 'string' && message.trim()) return message;
+    if (typeof error === 'string' && error.trim()) return error;
+    return null;
   }
 
   async get<T>(endpoint: string, options?: RequestInit): Promise<T> {

@@ -112,8 +112,8 @@ function ProductsContent() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Produtos</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">Gerencie seu catálogo de produtos</p>
+            <h1 className="text-3xl font-bold text-foreground">Produtos</h1>
+            <p className="text-text-80 mt-1">Gerencie seu catálogo de produtos</p>
           </div>
           <div className="flex gap-3">
             {hasPermission('products', 'export') && (
@@ -133,7 +133,7 @@ function ProductsContent() {
         </div>
 
         {/* Search */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4">
+        <div className="app-card p-4">
           <Input
             placeholder="Buscar por nome ou SKU..."
             value={searchTerm}
@@ -159,7 +159,7 @@ function ProductsContent() {
                     e.stopPropagation();
                     handleEdit(product);
                   }}
-                  className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                  className="text-accent-detail hover:text-accent-muted"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />

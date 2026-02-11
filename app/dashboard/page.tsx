@@ -1,230 +1,246 @@
 "use client";
 
-import Link from "next/link";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/contexts/AuthContext";
-import {
-  clientService,
-  productService,
-  quoteService,
-} from "@/lib/api/services";
-import { useEffect, useState } from "react";
+import { StatCard } from "@/components/dashboard/StatCard";
+import { LineChart } from "@/components/dashboard/LineChart";
+import { BarChart } from "@/components/dashboard/BarChart";
+import { getMockDashboardData } from "@/lib/mock/dashboard";
+import { getDashboardMetrics } from "@/lib/mock/dashboardMetrics";
+import { formatCurrency, formatDate } from "@/lib/utils/format";
 
 function DashboardContent() {
   const { user } = useAuth();
-  const [stats, setStats] = useState({
-    clients: 0,
-    products: 0,
-    quotes: 0,
-    loading: true,
-  });
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const [clientsRes, productsRes, quotesRes] = await Promise.all([
-          clientService.count(),
-          productService.count(),
-          quoteService.count(),
-        ]);
+  const mock = getMockDashboardData();
+  const metrics = getDashboardMetrics(mock);
 
-        setStats({
-          clients: clientsRes.count || 0,
-          products: productsRes.count || 0,
-          quotes: quotesRes.count || 0,
-          loading: false,
-        });
-      } catch (error) {
-        console.error("Failed to fetch stats:", error);
-        setStats((prev) => ({ ...prev, loading: false }));
-      }
-    };
+  const momLabel = (pct: number | null) => {
+    if (pct === null) return "Sem base";
+    const value = Math.round(pct * 100);
+    const sign = value > 0 ? "+" : "";
+    return `${sign}${value}% vs mês anterior`;
+  };
 
-    fetchStats();
-  }, []);
+  const ppLabel = (pp: number | null) => {
+    if (pp === null) return "Sem base";
+    const rounded = Math.round(pp * 10) / 10;
+    const sign = rounded > 0 ? "+" : "";
+    return `${sign}${rounded}pp vs mês anterior`;
+  };
 
-  const statCards = [
-    {
-      title: "Clientes",
-      value: stats.clients,
-      icon: (
-        <svg
-          className="w-8 h-8"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-          />
-        </svg>
-      ),
-      color: "bg-blue-500",
-      href: "/dashboard/clients",
-    },
-    {
-      title: "Produtos",
-      value: stats.products,
-      icon: (
-        <svg
-          className="w-8 h-8"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M20 7l-8-4-8 4m16 0l-8 4m0 0L4 7m8 4v10M4 7v10m16 0v-10M4 7l8 4m0 0l8-4"
-          />
-        </svg>
-      ),
-      color: "bg-green-500",
-      href: "/dashboard/products",
-    },
-    {
-      title: "Orçamentos",
-      value: stats.quotes,
-      icon: (
-        <svg
-          className="w-8 h-8"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-          />
-        </svg>
-      ),
-      color: "bg-purple-500",
-      href: "/dashboard/quotes",
-    },
-  ];
+  const pct = (rate: number) => `${Math.round(rate * 100)}%`;
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Welcome Section */}
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+        <div className="flex flex-col gap-2">
+          <h1 className="text-3xl font-bold text-foreground">
             Bem-vindo, {user?.name || user?.email}!
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Gerencie seu negócio de forma eficiente e inteligente
+          <p className="text-text-80">
+            Visão comercial do mês (dados mockados por enquanto)
           </p>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {statCards.map((stat) => (
-            <Link
-              key={stat.title}
-              href={stat.href}
-              className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow group"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
-                    {stat.title}
-                  </p>
-                  <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                    {stats.loading ? "..." : stat.value}
-                  </p>
-                </div>
-                <div
-                  className={`${stat.color} text-white p-3 rounded-lg group-hover:scale-110 transition-transform`}
-                >
-                  {stat.icon}
-                </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+          <StatCard
+            title="Orçamentos no mês"
+            value={String(metrics.kpis.quotesThisMonth)}
+            subtitle={`Mês anterior: ${metrics.kpis.quotesLastMonth}`}
+            trendLabel={momLabel(metrics.kpis.quotesMoMChangePct)}
+            trendVariant={
+              metrics.kpis.quotesMoMChangePct === null
+                ? "neutral"
+                : metrics.kpis.quotesMoMChangePct >= 0
+                  ? "up"
+                  : "down"
+            }
+            right={
+              <div className="h-11 w-11 rounded-xl bg-accent-15 text-accent-muted flex items-center justify-center">
+                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
               </div>
-            </Link>
-          ))}
+            }
+          />
+
+          <StatCard
+            title="Taxa de conversão"
+            value={pct(metrics.kpis.conversionRate)}
+            subtitle="Aprovados / (sem rascunhos)"
+            trendLabel={ppLabel(metrics.kpis.conversionRateDeltaPp)}
+            trendVariant={
+              metrics.kpis.conversionRateDeltaPp === null
+                ? "neutral"
+                : metrics.kpis.conversionRateDeltaPp >= 0
+                  ? "up"
+                  : "down"
+            }
+            right={
+              <div className="h-11 w-11 rounded-xl bg-accent-15 text-accent-muted flex items-center justify-center">
+                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            }
+          />
+
+          <StatCard
+            title="Faturamento estimado"
+            value={formatCurrency(metrics.kpis.estimatedRevenue)}
+            subtitle="Somente aprovados"
+            trendLabel={momLabel(metrics.kpis.estimatedRevenueMoMChangePct)}
+            trendVariant={
+              metrics.kpis.estimatedRevenueMoMChangePct === null
+                ? "neutral"
+                : metrics.kpis.estimatedRevenueMoMChangePct >= 0
+                  ? "up"
+                  : "down"
+            }
+            right={
+              <div className="h-11 w-11 rounded-xl bg-accent-15 text-accent-muted flex items-center justify-center">
+                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-10V6m0 12v-2m9-4a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+            }
+          />
+
+          <StatCard
+            title="Ticket médio"
+            value={formatCurrency(metrics.kpis.avgTicket)}
+            subtitle="Aprovados no mês"
+            trendLabel={momLabel(metrics.kpis.avgTicketMoMChangePct)}
+            trendVariant={
+              metrics.kpis.avgTicketMoMChangePct === null
+                ? "neutral"
+                : metrics.kpis.avgTicketMoMChangePct >= 0
+                  ? "up"
+                  : "down"
+            }
+            right={
+              <div className="h-11 w-11 rounded-xl bg-accent-15 text-accent-muted flex items-center justify-center">
+                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 14l2-2 4 4m0 0l2-2m-2 2V7" />
+                </svg>
+              </div>
+            }
+          />
         </div>
 
-        {/* Quick Actions */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-            Ações Rápidas
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <Link
-              href="/dashboard/clients"
-              className="flex items-center gap-3 p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
-              <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
-                <svg
-                  className="w-5 h-5 text-blue-600 dark:text-blue-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 4v16m8-8H4"
-                  />
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <div className="app-card p-6">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">Orçamentos (últimos 30 dias)</h2>
+                <p className="text-sm text-text-60">Volume diário (sem rascunhos)</p>
+              </div>
+            </div>
+            <div className="mt-5">
+              <LineChart data={metrics.series.quotesLast30Days} />
+            </div>
+          </div>
+
+          <div className="app-card p-6">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">Aprovados vs rejeitados</h2>
+                <p className="text-sm text-text-60">Últimos 6 meses</p>
+              </div>
+            </div>
+            <div className="mt-5">
+              <BarChart data={metrics.series.approvedVsRejectedLast6Months} />
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <div className="app-card p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">Novos clientes no mês</h2>
+                <p className="mt-1 text-sm text-text-60">
+                  {metrics.kpis.newClientsThisMonth} novos clientes (mais recentes abaixo)
+                </p>
+              </div>
+              <div className="h-11 w-11 rounded-xl bg-accent-15 text-accent-muted flex items-center justify-center">
+                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
               </div>
-              <span className="font-medium text-gray-900 dark:text-white">
-                Novo Cliente
-              </span>
-            </Link>
-            <Link
-              href="/dashboard/products"
-              className="flex items-center gap-3 p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
-              <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
-                <svg
-                  className="w-5 h-5 text-green-600 dark:text-green-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 4v16m8-8H4"
-                  />
+            </div>
+
+            <div className="mt-5 space-y-3">
+              {metrics.lists.newClientsThisMonth.length === 0 ? (
+                <p className="text-sm text-text-80">Nenhum novo cliente registrado neste mês.</p>
+              ) : (
+                metrics.lists.newClientsThisMonth.map((c) => (
+                  <div
+                    key={c.id}
+                    className="flex items-center justify-between rounded-lg border border-glass-10 bg-glass-5 px-4 py-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-foreground">{c.name}</p>
+                      <p className="text-xs text-text-60">ID: {c.id}</p>
+                    </div>
+                    <span className="text-xs text-text-60">{formatDate(c.createdAt)}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className="app-card p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">Top 5 clientes por valor orçado</h2>
+                <p className="mt-1 text-sm text-text-60">Somatório do mês (sem rascunhos)</p>
+              </div>
+              <div className="h-11 w-11 rounded-xl bg-accent-15 text-accent-muted flex items-center justify-center">
+                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 11V7a1 1 0 112 0v4h4a1 1 0 110 2h-4v4a1 1 0 11-2 0v-4H7a1 1 0 110-2h4z" />
                 </svg>
               </div>
-              <span className="font-medium text-gray-900 dark:text-white">
-                Novo Produto
-              </span>
-            </Link>
-            <Link
-              href="/dashboard/quotes"
-              className="flex items-center gap-3 p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
-              <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
-                <svg
-                  className="w-5 h-5 text-purple-600 dark:text-purple-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 4v16m8-8H4"
-                  />
-                </svg>
-              </div>
-              <span className="font-medium text-gray-900 dark:text-white">
-                Novo Orçamento
-              </span>
-            </Link>
+            </div>
+
+            <div className="mt-5">
+              {metrics.lists.topClientsThisMonth.length === 0 ? (
+                <p className="text-sm text-text-80">Ainda não há orçamentos neste mês.</p>
+              ) : (
+                <div className="overflow-hidden rounded-xl border border-glass-10">
+                  <table className="min-w-full divide-y divide-glass-10">
+                    <thead className="bg-glass-5">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-text-60 uppercase tracking-wider">
+                          Cliente
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-text-60 uppercase tracking-wider w-[84px]">
+                          Orç.
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-text-60 uppercase tracking-wider w-[160px]">
+                          Valor
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-glass-5 divide-y divide-glass-10">
+                      {metrics.lists.topClientsThisMonth.map((c) => (
+                        <tr key={c.id} className="hover:bg-glass-10 transition-colors">
+                          <td className="px-4 py-3 text-sm text-text-80 max-w-[260px]">
+                            <span className="truncate inline-block max-w-[260px]">{c.name}</span>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-text-80">{c.quotes}</td>
+                          <td className="px-4 py-3 text-sm text-right font-medium text-foreground">
+                            {formatCurrency(c.total)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

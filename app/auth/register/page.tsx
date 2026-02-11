@@ -1,9 +1,9 @@
 'use client';
 
 import React from 'react';
-import LoginForm from '@/components/auth/LoginForm';
+import RegisterForm from '@/components/auth/RegisterForm';
 
-export default function LoginPage() {
+export default function RegisterPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       {/* Animated background elements */}
@@ -29,37 +29,31 @@ export default function LoginPage() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                  d="M12 4v16m8-8H4"
                 />
               </svg>
             </div>
 
             <h1 className="text-3xl font-bold text-foreground mb-2">
-              Bem-vindo à OnMarmoraria
+              Criar conta
             </h1>
             <p className="text-text-80">
-              Faça login para acessar sua conta
+              Cadastre-se para acessar a plataforma
             </p>
-
-            <div className="inline-flex items-center gap-2 mt-4 px-3 py-1 rounded-full bg-accent-15 border border-accent-20">
-              <span className="text-xs font-medium text-accent-muted">
-                Marmoraria • Orçamentos e gestão
-              </span>
-            </div>
           </div>
 
-          {/* Login Form */}
-          <LoginForm />
+          {/* Register Form */}
+          <RegisterForm />
 
           {/* Footer */}
           <div className="mt-6 text-center">
             <p className="text-sm text-text-60">
-              Não tem uma conta?{' '}
+              Já tem uma conta?{' '}
               <a
-                href="/auth/register"
+                href="/auth/login"
                 className="font-medium text-accent-detail hover:text-accent-muted transition-colors"
               >
-                Criar conta
+                Fazer login
               </a>
             </p>
           </div>
@@ -69,8 +63,9 @@ export default function LoginPage() {
           OnMarmoraria • Gestão empresarial otimizada
         </p>
       </div>
-
     </div>
   );
 }
+
+
 

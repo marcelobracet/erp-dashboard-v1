@@ -135,10 +135,10 @@ function SettingsContent() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            <h1 className="text-3xl font-bold text-foreground">
               Configurações
             </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
+            <p className="text-text-80 mt-1">
               Gerencie as configurações da empresa
             </p>
           </div>
@@ -160,9 +160,9 @@ function SettingsContent() {
 
         {/* Settings Form */}
         {!tenantSettings || !tenantSettings.settings ? (
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-12 text-center">
+          <div className="app-card p-12 text-center">
             <svg
-              className="mx-auto h-12 w-12 text-gray-400"
+              className="mx-auto h-12 w-12 text-text-60"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -180,10 +180,10 @@ function SettingsContent() {
                 d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
               />
             </svg>
-            <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
+            <h3 className="mt-2 text-sm font-medium text-foreground">
               Nenhuma configuração encontrada
             </h3>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            <p className="mt-1 text-sm text-text-80">
               {loading
                 ? "Carregando..."
                 : "Não há configurações disponíveis no momento."}
@@ -197,8 +197,8 @@ function SettingsContent() {
         ) : (
           <div className="space-y-6">
             {/* Informações da Empresa */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+            <div className="app-card p-6">
+              <h2 className="text-xl font-semibold text-foreground mb-6 flex items-center gap-2">
                 <svg
                   className="w-6 h-6"
                   fill="none"
@@ -216,7 +216,7 @@ function SettingsContent() {
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-text-80 mb-2">
                     {settingsLabels.company_name}
                   </label>
                   {isEditing ? (
@@ -298,8 +298,8 @@ function SettingsContent() {
             </div>
 
             {/* Endereço */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+            <div className="app-card p-6">
+              <h2 className="text-xl font-semibold text-foreground mb-6 flex items-center gap-2">
                 <svg
                   className="w-6 h-6"
                   fill="none"
@@ -323,7 +323,7 @@ function SettingsContent() {
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-text-80 mb-2">
                     {settingsLabels.company_address}
                   </label>
                   {isEditing ? (
@@ -341,7 +341,7 @@ function SettingsContent() {
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-text-80 mb-2">
                     {settingsLabels.company_city}
                   </label>
                   {isEditing ? (
@@ -359,7 +359,7 @@ function SettingsContent() {
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-text-80 mb-2">
                     {settingsLabels.company_state}
                   </label>
                   {isEditing ? (
@@ -378,7 +378,7 @@ function SettingsContent() {
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-text-80 mb-2">
                     {settingsLabels.company_zip}
                   </label>
                   {isEditing ? (
@@ -399,8 +399,8 @@ function SettingsContent() {
             </div>
 
             {/* Cores */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+            <div className="app-card p-6">
+              <h2 className="text-xl font-semibold text-foreground mb-6 flex items-center gap-2">
                 <svg
                   className="w-6 h-6"
                   fill="none"
@@ -418,7 +418,7 @@ function SettingsContent() {
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-text-80 mb-2">
                     {settingsLabels.primary_color}
                   </label>
                   {isEditing ? (

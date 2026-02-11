@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Fragment } from 'react';
+import React from 'react';
 
 interface ModalProps {
   isOpen: boolean;
@@ -25,22 +25,22 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', footer }:
     <div className="fixed inset-0 z-50 overflow-y-auto">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+        className="fixed inset-0 bg-overlay-40 transition-opacity"
         onClick={onClose}
       />
 
       {/* Modal */}
       <div className="flex min-h-full items-center justify-center p-4">
         <div
-          className={`relative w-full ${sizeClasses[size]} transform overflow-hidden rounded-xl bg-white dark:bg-gray-800 shadow-xl transition-all`}
+          className={`relative w-full ${sizeClasses[size]} transform overflow-hidden rounded-xl bg-glass-5 border border-glass-10 backdrop-blur-xl shadow-xl transition-all`}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h3>
+          <div className="flex items-center justify-between border-b border-glass-10 px-6 py-4">
+            <h3 className="text-lg font-semibold text-foreground">{title}</h3>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+              className="text-text-60 hover:text-foreground transition-colors"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -53,7 +53,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', footer }:
 
           {/* Footer */}
           {footer && (
-            <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4 bg-gray-50 dark:bg-gray-900">
+            <div className="border-t border-glass-10 px-6 py-4 bg-glass-5">
               {footer}
             </div>
           )}

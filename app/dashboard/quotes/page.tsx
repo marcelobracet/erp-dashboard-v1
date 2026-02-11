@@ -12,10 +12,10 @@ import { ProtectedComponent } from '@/components/auth/ProtectedComponent';
 import { formatDate, formatCurrency } from '@/lib/utils/format';
 
 const statusColors: Record<string, string> = {
-  pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+  pending: 'bg-accent-15 text-accent-muted',
   approved: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
   rejected: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-  sent: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+  sent: 'bg-accent-20 text-accent-muted',
 };
 
 function QuotesContent() {
@@ -104,8 +104,8 @@ function QuotesContent() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Orçamentos</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">Gerencie seus orçamentos e propostas</p>
+            <h1 className="text-3xl font-bold text-foreground">Orçamentos</h1>
+            <p className="text-text-80 mt-1">Gerencie seus orçamentos e propostas</p>
           </div>
           <ProtectedComponent resource="quotes" action="create">
             <Button>
@@ -115,7 +115,7 @@ function QuotesContent() {
         </div>
 
         {/* Search */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4">
+        <div className="app-card p-4">
           <Input
             placeholder="Buscar por cliente ou ID..."
             value={searchTerm}
@@ -139,7 +139,7 @@ function QuotesContent() {
                 <select
                   value={quote.status}
                   onChange={(e) => handleStatusChange(quote.id, e.target.value)}
-                  className="text-xs px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className="text-xs px-2 py-1 rounded border border-glass-10 bg-glass-5 text-foreground"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <option value="pending">Pendente</option>
