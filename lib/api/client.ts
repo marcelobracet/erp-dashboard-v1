@@ -1,4 +1,9 @@
 import { API_CONFIG, API_TIMEOUT } from './config';
+import {
+  getAccessToken,
+  isKeycloakEnabled,
+  updateToken as keycloakUpdateToken,
+} from '@/lib/auth/keycloak';
 
 export interface ApiError {
   message: string;
@@ -67,7 +72,7 @@ export class ApiClient {
     retry = true
   ): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
-    const token = this.getToken();
+    const token = await this.getAuthToken();
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -91,7 +96,7 @@ export class ApiClient {
       clearTimeout(timeoutId);
 
       // Handle 401 Unauthorized - try to refresh token (but only if we have a token)
-      if (response.status === 401 && retry && endpoint !== API_CONFIG.endpoints.auth.refresh && endpoint !== API_CONFIG.endpoints.auth.login) {
+      if (!isKeycloakEnabled() && response.status === 401 && retry && endpoint !== API_CONFIG.endpoints.auth.refresh && endpoint !== API_CONFIG.endpoints.auth.login) {
         // Only try refresh if we have a token (meaning this is a session expiry, not invalid credentials)
         if (token) {
           let originalError: ApiError | null = null;
@@ -194,6 +199,15 @@ export class ApiClient {
   private getToken(): string | null {
     if (typeof window === 'undefined') return null;
     return localStorage.getItem('access_token');
+  }
+
+  private async getAuthToken(): Promise<string | null> {
+    if (!isKeycloakEnabled() || typeof window === 'undefined') {
+      return this.getToken();
+    }
+
+    await keycloakUpdateToken(30);
+    return await getAccessToken();
   }
 
   setToken(token: string): void {

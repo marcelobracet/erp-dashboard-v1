@@ -1,12 +1,11 @@
-'use client';
+"use client";
 
-import React from 'react';
-import RegisterForm from '@/components/auth/RegisterForm';
+import React from "react";
+import RegisterForm from "@/components/auth/RegisterForm";
 
 export default function RegisterPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      {/* Animated background elements */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-amber-300 rounded-full mix-blend-multiply filter blur-xl opacity-15 animate-blob" />
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-amber-500 rounded-full mix-blend-multiply filter blur-xl opacity-10 animate-blob animation-delay-2000" />
@@ -48,7 +47,7 @@ export default function RegisterPage() {
           {/* Footer */}
           <div className="mt-6 text-center">
             <p className="text-sm text-text-60">
-              Já tem uma conta?{' '}
+              Já tem uma conta?{" "}
               <a
                 href="/auth/login"
                 className="font-medium text-accent-detail hover:text-accent-muted transition-colors"
@@ -66,6 +65,3 @@ export default function RegisterPage() {
     </div>
   );
 }
-
-
-

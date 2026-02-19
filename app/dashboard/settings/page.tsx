@@ -132,7 +132,6 @@ function SettingsContent() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-foreground">
@@ -158,7 +157,6 @@ function SettingsContent() {
           )}
         </div>
 
-        {/* Settings Form */}
         {!tenantSettings || !tenantSettings.settings ? (
           <div className="app-card p-12 text-center">
             <svg
@@ -196,7 +194,6 @@ function SettingsContent() {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Informações da Empresa */}
             <div className="app-card p-6">
               <h2 className="text-xl font-semibold text-foreground mb-6 flex items-center gap-2">
                 <svg
@@ -297,7 +294,6 @@ function SettingsContent() {
               </div>
             </div>
 
-            {/* Endereço */}
             <div className="app-card p-6">
               <h2 className="text-xl font-semibold text-foreground mb-6 flex items-center gap-2">
                 <svg
@@ -397,104 +393,7 @@ function SettingsContent() {
                 </div>
               </div>
             </div>
-
-            {/* Cores */}
-            <div className="app-card p-6">
-              <h2 className="text-xl font-semibold text-foreground mb-6 flex items-center gap-2">
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
-                  />
-                </svg>
-                Cores do Sistema
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-text-80 mb-2">
-                    {settingsLabels.primary_color}
-                  </label>
-                  {isEditing ? (
-                    <div className="flex gap-2">
-                      <input
-                        type="color"
-                        value={editedSettings.primary_color || "#2196F3"}
-                        onChange={(e) =>
-                          handleChange("primary_color", e.target.value)
-                        }
-                        className="w-16 h-12 rounded-lg border-2 border-gray-300 dark:border-gray-600 cursor-pointer bg-white dark:bg-gray-900"
-                      />
-                      <Input
-                        value={editedSettings.primary_color || ""}
-                        onChange={(e) =>
-                          handleChange("primary_color", e.target.value)
-                        }
-                        placeholder="#2196F3"
-                        className="flex-1"
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-3 py-2">
-                      <div
-                        className="w-12 h-12 rounded-lg border-2 border-gray-300 dark:border-gray-600"
-                        style={{
-                          backgroundColor: settings.primary_color || "#2196F3",
-                        }}
-                      />
-                      <p className="text-gray-900 dark:text-white font-mono">
-                        {settings.primary_color || "-"}
-                      </p>
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    {settingsLabels.secondary_color}
-                  </label>
-                  {isEditing ? (
-                    <div className="flex gap-2">
-                      <input
-                        type="color"
-                        value={editedSettings.secondary_color || "#FFC107"}
-                        onChange={(e) =>
-                          handleChange("secondary_color", e.target.value)
-                        }
-                        className="w-16 h-12 rounded-lg border-2 border-gray-300 dark:border-gray-600 cursor-pointer bg-white dark:bg-gray-900"
-                      />
-                      <Input
-                        value={editedSettings.secondary_color || ""}
-                        onChange={(e) =>
-                          handleChange("secondary_color", e.target.value)
-                        }
-                        placeholder="#FFC107"
-                        className="flex-1"
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-3 py-2">
-                      <div
-                        className="w-12 h-12 rounded-lg border-2 border-gray-300 dark:border-gray-600"
-                        style={{
-                          backgroundColor:
-                            settings.secondary_color || "#FFC107",
-                        }}
-                      />
-                      <p className="text-gray-900 dark:text-white font-mono">
-                        {settings.secondary_color || "-"}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
             </div>
-          </div>
         )}
       </div>
     </DashboardLayout>

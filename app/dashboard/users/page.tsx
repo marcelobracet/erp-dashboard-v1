@@ -42,7 +42,6 @@ function UsersContent() {
     }
   }, [mounted]);
 
-  // Only admins can access this page - but wait for mount to prevent hydration mismatch
   if (!mounted) {
     return (
       <DashboardLayout>

@@ -47,9 +47,10 @@ export function usePermissions() {
 
   const hasRole = (roles: UserRole | UserRole[]): boolean => {
     if (isAuthDisabled()) return true;
-    if (!user?.role) return false;
+    if (!user?.role && !user?.roles?.length) return false;
     const rolesArray = Array.isArray(roles) ? roles : [roles];
-    return rolesArray.includes(user.role);
+    const effectiveRoles = user?.roles?.length ? user.roles : user?.role ? [user.role] : [];
+    return rolesArray.some((r) => effectiveRoles.includes(r));
   };
 
   const canAccess = (resource: string): boolean => {

@@ -1,5 +1,14 @@
 import { apiClient } from "./client";
 import { API_CONFIG } from "./config";
+import { getTenantIdSync } from '@/lib/auth/keycloak';
+
+function withTenantId<T extends Record<string, unknown>>(data: T): T {
+  const tenantId = getTenantIdSync();
+  if (!tenantId) return data;
+  const current = (data as Record<string, unknown>)['tenant_id'];
+  if (current) return data;
+  return { ...data, tenant_id: tenantId };
+}
 
 // Types
 export interface Tenant {
@@ -92,9 +101,9 @@ export const clientService = {
   getById: (id: string) =>
     apiClient.get<Client>(API_CONFIG.endpoints.clients.byId(id)),
   create: (data: Partial<Client>) =>
-    apiClient.post<Client>(API_CONFIG.endpoints.clients.list, data),
+    apiClient.post<Client>(API_CONFIG.endpoints.clients.list, withTenantId(data as Record<string, unknown>)),
   update: (id: string, data: Partial<Client>) =>
-    apiClient.put<Client>(API_CONFIG.endpoints.clients.byId(id), data),
+    apiClient.put<Client>(API_CONFIG.endpoints.clients.byId(id), withTenantId(data as Record<string, unknown>)),
   delete: (id: string) =>
     apiClient.delete(API_CONFIG.endpoints.clients.byId(id)),
   count: () =>
@@ -106,9 +115,9 @@ export const productService = {
   getById: (id: string) =>
     apiClient.get<Product>(API_CONFIG.endpoints.products.byId(id)),
   create: (data: Partial<Product>) =>
-    apiClient.post<Product>(API_CONFIG.endpoints.products.list, data),
+    apiClient.post<Product>(API_CONFIG.endpoints.products.list, withTenantId(data as Record<string, unknown>)),
   update: (id: string, data: Partial<Product>) =>
-    apiClient.put<Product>(API_CONFIG.endpoints.products.byId(id), data),
+    apiClient.put<Product>(API_CONFIG.endpoints.products.byId(id), withTenantId(data as Record<string, unknown>)),
   delete: (id: string) =>
     apiClient.delete(API_CONFIG.endpoints.products.byId(id)),
   count: () =>
@@ -127,9 +136,9 @@ export const quoteService = {
   getById: (id: string) =>
     apiClient.get<Quote>(API_CONFIG.endpoints.quotes.byId(id)),
   create: (data: Partial<Quote>) =>
-    apiClient.post<Quote>(API_CONFIG.endpoints.quotes.list, data),
+    apiClient.post<Quote>(API_CONFIG.endpoints.quotes.list, withTenantId(data as Record<string, unknown>)),
   update: (id: string, data: Partial<Quote>) =>
-    apiClient.put<Quote>(API_CONFIG.endpoints.quotes.byId(id), data),
+    apiClient.put<Quote>(API_CONFIG.endpoints.quotes.byId(id), withTenantId(data as Record<string, unknown>)),
   delete: (id: string) =>
     apiClient.delete(API_CONFIG.endpoints.quotes.byId(id)),
   count: () =>
@@ -158,13 +167,14 @@ export interface TenantSettingsResponse {
 
 export const settingsService = {
   get: (tenantId?: string) => {
-    const endpoint = tenantId
-      ? `${API_CONFIG.endpoints.settings.get}?tenant_id=${tenantId}`
+    const effectiveTenantId = tenantId ?? getTenantIdSync() ?? undefined;
+    const endpoint = effectiveTenantId
+      ? `${API_CONFIG.endpoints.settings.get}?tenant_id=${effectiveTenantId}`
       : API_CONFIG.endpoints.settings.get.split("?")[0]; // Remove query params if no tenantId
     return apiClient.get<TenantSettingsResponse>(endpoint);
   },
   update: (data: Partial<Settings>) =>
-    apiClient.put<Settings>(API_CONFIG.endpoints.settings.update, data),
+    apiClient.put<Settings>(API_CONFIG.endpoints.settings.update, withTenantId(data as Record<string, unknown>)),
 };
 
 export const userService = {

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
+import { isKeycloakEnabled, login as keycloakLogin } from '@/lib/auth/keycloak';
 
 export default function LoginForm() {
   const [email, setEmail] = useState('');
@@ -12,6 +13,20 @@ export default function LoginForm() {
   const [errors, setErrors] = useState<{ email?: string; password?: string; general?: string }>({});
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
+
+  const keycloakEnabled = isKeycloakEnabled();
+
+  const handleKeycloakLogin = async () => {
+    setErrors({});
+    setIsLoading(true);
+    try {
+      await keycloakLogin({ redirectUri: `${window.location.origin}/dashboard` });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao redirecionar para o login.';
+      setErrors({ general: errorMessage });
+      setIsLoading(false);
+    }
+  };
 
   const validateForm = () => {
     const newErrors: typeof errors = {};
@@ -53,6 +68,38 @@ export default function LoginForm() {
       setIsLoading(false);
     }
   };
+
+  console.log('Keycloak enabled:', keycloakEnabled);
+
+  if (keycloakEnabled) {
+    return (
+      <div className="space-y-6">
+        {errors.general && (
+          <div className="p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+            <p className="text-sm text-red-800 dark:text-red-200">{errors.general}</p>
+          </div>
+        )}
+
+        <div className="p-4 rounded-xl bg-glass-5 border border-glass-10">
+          <p className="text-sm text-text-80">
+            Autenticação via Keycloak (SSO). Clique abaixo para entrar.
+          </p>
+        </div>
+
+        <Button
+          type="button"
+          variant="primary"
+          size="lg"
+          fullWidth
+          isLoading={isLoading}
+          disabled={isLoading}
+          onClick={handleKeycloakLogin}
+        >
+          Entrar com Keycloak
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">

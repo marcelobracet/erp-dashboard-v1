@@ -49,6 +49,7 @@ export interface UserProfile {
   name: string;
   role: string;
   tenant_id?: string;
+  roles?: string[];
 }
 
 export const authService = {
