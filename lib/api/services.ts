@@ -1,6 +1,9 @@
 import { apiClient } from "./client";
 import { API_CONFIG } from "./config";
-import { getTenantIdSync } from '@/lib/auth/keycloak';
+import { getTenantIdSync } from '@/lib/auth/tenant';
+import { isLocalProductsEnabled, isLocalQuotesEnabled } from '@/lib/featureFlags';
+import { localProductStore } from '@/lib/local/products';
+import { localQuoteStore } from '@/lib/local/quotes';
 
 function withTenantId<T extends Record<string, unknown>>(data: T): T {
   const tenantId = getTenantIdSync();
@@ -42,6 +45,18 @@ export interface Product {
   tenant_id?: string;
   created_at?: string;
   updated_at?: string;
+
+  // Extra fields for marmoraria / orçamento
+  category?: 'material' | 'service' | 'accessory';
+  unit?: 'm2' | 'm' | 'un' | 'kit' | 'chapa' | 'hora';
+  pricing_rule?: 'por_area' | 'por_linear' | 'por_unidade';
+  thickness_mm?: number;
+  finish?: string;
+  line?: string;
+  waste_percent?: number;
+  minimum_charge?: number;
+  image_url?: string; // for now can be a data URL; later a bucket URL
+  active?: boolean;
 }
 
 export interface Quote {
@@ -54,6 +69,20 @@ export interface Quote {
   tenant_id?: string;
   created_at?: string;
   updated_at?: string;
+
+  // Snapshot fields for printable proposal
+  client_snapshot?: {
+    name: string;
+    phone?: string;
+    email?: string;
+    address?: string;
+  };
+  environments?: Array<{
+    id: string;
+    name: string;
+    item_ids: string[];
+  }>;
+  notes?: string;
 }
 
 export interface QuoteItem {
@@ -63,6 +92,21 @@ export interface QuoteItem {
   quantity: number;
   price: number;
   subtotal: number;
+
+  // Calculation metadata
+  unit?: Product['unit'];
+  pricing_rule?: Product['pricing_rule'];
+  width_m?: number;
+  height_m?: number;
+  length_m?: number;
+  base_quantity?: number;
+  charged_quantity?: number;
+  note?: string;
+  description?: string;
+
+  // Grouping in printable proposal
+  environment_id?: string;
+  environment_name?: string;
 }
 
 export interface Settings {
@@ -111,42 +155,118 @@ export const clientService = {
 };
 
 export const productService = {
-  list: () => apiClient.get<Product[]>(API_CONFIG.endpoints.products.list),
+  list: async () => {
+    if (isLocalProductsEnabled()) return localProductStore.list();
+    try {
+      return await apiClient.get<Product[]>(API_CONFIG.endpoints.products.list);
+    } catch {
+      return localProductStore.list();
+    }
+  },
   getById: (id: string) =>
-    apiClient.get<Product>(API_CONFIG.endpoints.products.byId(id)),
-  create: (data: Partial<Product>) =>
-    apiClient.post<Product>(API_CONFIG.endpoints.products.list, withTenantId(data as Record<string, unknown>)),
-  update: (id: string, data: Partial<Product>) =>
-    apiClient.put<Product>(API_CONFIG.endpoints.products.byId(id), withTenantId(data as Record<string, unknown>)),
-  delete: (id: string) =>
-    apiClient.delete(API_CONFIG.endpoints.products.byId(id)),
+    isLocalProductsEnabled()
+      ? Promise.resolve(localProductStore.getById(id) as Product)
+      : apiClient.get<Product>(API_CONFIG.endpoints.products.byId(id)),
+  create: async (data: Partial<Product>) => {
+    const payload = withTenantId(data as Record<string, unknown>);
+    if (isLocalProductsEnabled()) return localProductStore.create(payload as Partial<Product>);
+    try {
+      return await apiClient.post<Product>(API_CONFIG.endpoints.products.list, payload);
+    } catch {
+      return localProductStore.create(payload as Partial<Product>);
+    }
+  },
+  update: async (id: string, data: Partial<Product>) => {
+    const payload = withTenantId(data as Record<string, unknown>);
+    if (isLocalProductsEnabled()) return localProductStore.update(id, payload as Partial<Product>);
+    try {
+      return await apiClient.put<Product>(API_CONFIG.endpoints.products.byId(id), payload);
+    } catch {
+      return localProductStore.update(id, payload as Partial<Product>);
+    }
+  },
+  delete: async (id: string) => {
+    if (isLocalProductsEnabled()) {
+      localProductStore.delete(id);
+      return;
+    }
+    try {
+      await apiClient.delete(API_CONFIG.endpoints.products.byId(id));
+    } catch {
+      localProductStore.delete(id);
+    }
+  },
   count: () =>
     apiClient.get<{ count: number }>(API_CONFIG.endpoints.products.count),
   export: () =>
-    apiClient.get<Blob>(API_CONFIG.endpoints.products.export, {
-      headers: {
-        Accept:
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      },
-    }),
+    isLocalProductsEnabled()
+      ? Promise.resolve(localProductStore.exportCSV())
+      : apiClient.get<Blob>(API_CONFIG.endpoints.products.export, {
+          headers: {
+            Accept:
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          },
+        }),
 };
 
 export const quoteService = {
-  list: () => apiClient.get<Quote[]>(API_CONFIG.endpoints.quotes.list),
-  getById: (id: string) =>
-    apiClient.get<Quote>(API_CONFIG.endpoints.quotes.byId(id)),
-  create: (data: Partial<Quote>) =>
-    apiClient.post<Quote>(API_CONFIG.endpoints.quotes.list, withTenantId(data as Record<string, unknown>)),
-  update: (id: string, data: Partial<Quote>) =>
-    apiClient.put<Quote>(API_CONFIG.endpoints.quotes.byId(id), withTenantId(data as Record<string, unknown>)),
-  delete: (id: string) =>
-    apiClient.delete(API_CONFIG.endpoints.quotes.byId(id)),
+  list: async () => {
+    if (isLocalQuotesEnabled()) return localQuoteStore.list();
+    try {
+      return await apiClient.get<Quote[]>(API_CONFIG.endpoints.quotes.list);
+    } catch {
+      return localQuoteStore.list();
+    }
+  },
+  getById: async (id: string) => {
+    if (isLocalQuotesEnabled()) return localQuoteStore.getById(id) as Quote;
+    try {
+      return await apiClient.get<Quote>(API_CONFIG.endpoints.quotes.byId(id));
+    } catch {
+      return localQuoteStore.getById(id) as Quote;
+    }
+  },
+  create: async (data: Partial<Quote>) => {
+    const payload = withTenantId(data as Record<string, unknown>);
+    if (isLocalQuotesEnabled()) return localQuoteStore.create(payload as Partial<Quote>);
+    try {
+      return await apiClient.post<Quote>(API_CONFIG.endpoints.quotes.list, payload);
+    } catch {
+      return localQuoteStore.create(payload as Partial<Quote>);
+    }
+  },
+  update: async (id: string, data: Partial<Quote>) => {
+    const payload = withTenantId(data as Record<string, unknown>);
+    if (isLocalQuotesEnabled()) return localQuoteStore.update(id, payload as Partial<Quote>);
+    try {
+      return await apiClient.put<Quote>(API_CONFIG.endpoints.quotes.byId(id), payload);
+    } catch {
+      return localQuoteStore.update(id, payload as Partial<Quote>);
+    }
+  },
+  delete: async (id: string) => {
+    if (isLocalQuotesEnabled()) {
+      localQuoteStore.delete(id);
+      return;
+    }
+    try {
+      await apiClient.delete(API_CONFIG.endpoints.quotes.byId(id));
+    } catch {
+      localQuoteStore.delete(id);
+    }
+  },
   count: () =>
     apiClient.get<{ count: number }>(API_CONFIG.endpoints.quotes.count),
-  updateStatus: (id: string, status: string) =>
-    apiClient.put<Quote>(API_CONFIG.endpoints.quotes.updateStatus(id), {
-      status,
-    }),
+  updateStatus: async (id: string, status: string) => {
+    if (isLocalQuotesEnabled()) return localQuoteStore.updateStatus(id, status);
+    try {
+      return await apiClient.put<Quote>(API_CONFIG.endpoints.quotes.updateStatus(id), {
+        status,
+      });
+    } catch {
+      return localQuoteStore.updateStatus(id, status);
+    }
+  },
 };
 
 export interface TenantSettingsResponse {

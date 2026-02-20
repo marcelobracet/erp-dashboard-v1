@@ -11,6 +11,43 @@ import { useAuth } from "@/contexts/AuthContext";
 
 type TenantSettings = TenantSettingsResponse;
 
+function localSettingsKey(tenantId?: string) {
+  return `erp-dashboard.settings.${tenantId ?? "default"}`;
+}
+
+function readLocalSettings(tenantId?: string): TenantSettings | null {
+  try {
+    const raw = window.localStorage.getItem(localSettingsKey(tenantId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as TenantSettings;
+    if (!parsed || typeof parsed !== "object") return null;
+    if (!("settings" in parsed)) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeLocalSettings(tenantId: string | undefined, settings: Record<string, string>) {
+  try {
+    const payload: TenantSettings = {
+      tenant_id: tenantId ?? "default",
+      settings,
+    } as TenantSettings;
+    window.localStorage.setItem(localSettingsKey(tenantId), JSON.stringify(payload));
+
+    // Convenience keys (used by QuotePreview fallback)
+    if (typeof settings.company_name === "string") {
+      window.localStorage.setItem("company_name", settings.company_name);
+    }
+    if (typeof settings.logo_url === "string") {
+      window.localStorage.setItem("logo_url", settings.logo_url);
+    }
+  } catch {
+    // ignore
+  }
+}
+
 const settingsLabels: Record<string, string> = {
   company_name: "Nome da Empresa",
   company_email: "Email",
@@ -58,6 +95,7 @@ function SettingsContent() {
         setTenantSettings(settingsData);
         if (settingsData.settings) {
           setEditedSettings(settingsData.settings as Record<string, string>);
+          writeLocalSettings(user?.tenant_id, settingsData.settings as Record<string, string>);
         }
       } else {
         console.warn("❌ Unexpected API response format:", data);
@@ -65,7 +103,13 @@ function SettingsContent() {
       }
     } catch (error) {
       console.error("❌ Failed to fetch settings:", error);
-      setTenantSettings(null);
+      const local = readLocalSettings(user?.tenant_id);
+      if (local?.settings) {
+        setTenantSettings(local);
+        setEditedSettings(local.settings as Record<string, string>);
+      } else {
+        setTenantSettings(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -87,10 +131,14 @@ function SettingsContent() {
       await settingsService.update(editedSettings);
       setIsEditing(false);
       fetchSettings();
+      writeLocalSettings(user?.tenant_id, editedSettings);
       alert("Configurações salvas com sucesso!");
     } catch (error) {
       console.error("Failed to save settings:", error);
-      alert("Erro ao salvar configurações");
+      writeLocalSettings(user?.tenant_id, editedSettings);
+      setTenantSettings({ tenant_id: user?.tenant_id ?? "default", settings: editedSettings } as TenantSettings);
+      setIsEditing(false);
+      alert("Configurações salvas localmente (sem API)");
     }
   };
 

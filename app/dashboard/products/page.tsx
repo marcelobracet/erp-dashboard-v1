@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Table } from '@/components/ui/Table';
@@ -11,6 +12,7 @@ import { productService, Product } from '@/lib/api/services';
 import { usePermissions } from '@/hooks/usePermissions';
 import { ProtectedComponent } from '@/components/auth/ProtectedComponent';
 import { formatDate, formatCurrency } from '@/lib/utils/format';
+import ProductForm from '@/components/products/ProductForm';
 
 function ProductsContent() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -46,9 +48,22 @@ function ProductsContent() {
       key: 'name' as keyof Product,
       header: 'Nome',
       render: (value: string, row: Product) => (
-        <div>
-          <div className="font-medium text-gray-900 dark:text-white">{value}</div>
-          {row.sku && <div className="text-sm text-gray-500 dark:text-gray-400">SKU: {row.sku}</div>}
+        <div className="flex items-center gap-3">
+          {row.image_url ? (
+            <Image
+              src={row.image_url}
+              alt={row.name}
+              width={40}
+              height={40}
+              className="w-10 h-10 rounded-lg object-cover border border-glass-10"
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-lg bg-glass-10 border border-glass-10" />
+          )}
+          <div>
+            <div className="font-medium text-foreground">{value}</div>
+            {row.sku && <div className="text-sm text-text-60">SKU: {row.sku}</div>}
+          </div>
         </div>
       ),
     },
@@ -192,32 +207,19 @@ function ProductsContent() {
           }}
           title={selectedProduct ? 'Editar Produto' : 'Novo Produto'}
           size="md"
-          footer={
-            <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setIsModalOpen(false)}>
-                Cancelar
-              </Button>
-              <Button
-                onClick={async () => {
-                  // Implementation would go here
-                  setIsModalOpen(false);
-                  fetchProducts();
-                }}
-              >
-                Salvar
-              </Button>
-            </div>
-          }
         >
-          <div className="space-y-4">
-            <Input label="Nome" defaultValue={selectedProduct?.name || ''} />
-            <Input label="SKU" defaultValue={selectedProduct?.sku || ''} />
-            <Input label="Descrição" defaultValue={selectedProduct?.description || ''} />
-            <div className="grid grid-cols-2 gap-4">
-              <Input label="Preço" type="number" step="0.01" defaultValue={selectedProduct?.price || ''} />
-              <Input label="Estoque" type="number" defaultValue={selectedProduct?.stock || ''} />
-            </div>
-          </div>
+          <ProductForm
+            product={selectedProduct}
+            onCancel={() => {
+              setIsModalOpen(false);
+              setSelectedProduct(null);
+            }}
+            onSaved={() => {
+              setIsModalOpen(false);
+              setSelectedProduct(null);
+              fetchProducts();
+            }}
+          />
         </Modal>
       </div>
     </DashboardLayout>

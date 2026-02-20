@@ -1,9 +1,47 @@
+"use client";
+
 import React from 'react';
+import {
+  ResponsiveContainer,
+  BarChart as ReBarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+} from 'recharts';
 
 export interface BarChartDatum {
   label: string;
   approved: number;
   rejected: number;
+}
+
+function ChartTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: Array<{ name?: string; value?: number; color?: string }>; // recharts payload
+  label?: string;
+}) {
+  if (!active) return null;
+  const rows = (payload ?? []).filter((p) => typeof p?.value === 'number');
+  return (
+    <div className="rounded-lg border border-glass-10 bg-white/95 px-3 py-2 shadow-lg">
+      <div className="text-xs text-text-60">{label}</div>
+      <div className="mt-1 space-y-1">
+        {rows.map((r) => (
+          <div key={r.name} className="flex items-center justify-between gap-6 text-sm">
+            <span className="text-text-80">{r.name}</span>
+            <span className="font-semibold text-foreground">{r.value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export function BarChart({
@@ -13,93 +51,40 @@ export function BarChart({
   data: BarChartDatum[];
   height?: number;
 }) {
-  const width = 600;
-  const padX = 18;
-  const padTop = 12;
-  const padBottom = 18;
-  const chartH = 100 - padTop - padBottom;
-
-  const max = Math.max(1, ...data.flatMap((d) => [d.approved, d.rejected]));
-
-  const groupW = (width - padX * 2) / Math.max(1, data.length);
-  const barW = Math.max(6, groupW * 0.26);
-  const gap = barW * 0.18;
-
   return (
-    <div className="w-full">
-      <svg
-        viewBox={`0 0 ${width} 100`}
-        preserveAspectRatio="none"
-        className="w-full"
-        style={{ height }}
-        role="img"
-        aria-label="Aprovados vs rejeitados"
-      >
-        {[20, 40, 60, 80].map((y) => (
-          <line
-            key={y}
-            x1={padX}
-            x2={width - padX}
-            y1={y}
-            y2={y}
-            stroke="var(--color-glass-10)"
-            strokeWidth="1"
+    <div className="w-full" style={{ height }} aria-label="Aprovados vs rejeitados">
+      <ResponsiveContainer width="100%" height="100%">
+        <ReBarChart data={data} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
+          <CartesianGrid stroke="var(--color-glass-10)" strokeDasharray="4 4" vertical={false} />
+          <XAxis
+            dataKey="label"
+            tick={{ fill: 'var(--color-text-60)', fontSize: 12 }}
+            tickLine={false}
+            axisLine={false}
           />
-        ))}
-
-        {data.map((d, i) => {
-          const baseX = padX + i * groupW + groupW / 2;
-
-          const hA = (d.approved / max) * chartH;
-          const hR = (d.rejected / max) * chartH;
-
-          const xA = baseX - barW - gap / 2;
-          const xR = baseX + gap / 2;
-
-          const yA = padTop + (chartH - hA);
-          const yR = padTop + (chartH - hR);
-
-          return (
-            <g key={d.label}>
-              <rect
-                x={xA}
-                y={yA}
-                width={barW}
-                height={hA}
-                rx={2}
-                fill="var(--color-accent-90)"
-              />
-              <rect
-                x={xR}
-                y={yR}
-                width={barW}
-                height={hR}
-                rx={2}
-                fill="rgba(248, 113, 113, 0.75)"
-              />
-            </g>
-          );
-        })}
-      </svg>
-
-      <div className="mt-3 grid grid-cols-6 gap-2 text-xs text-text-60">
-        {data.map((d) => (
-          <div key={d.label} className="truncate">
-            {d.label}
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-3 flex items-center gap-4 text-xs">
-        <div className="flex items-center gap-2 text-text-60">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: 'var(--color-accent-90)' }} />
-          <span>Aprovados</span>
-        </div>
-        <div className="flex items-center gap-2 text-text-60">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: 'rgba(248, 113, 113, 0.75)' }} />
-          <span>Rejeitados</span>
-        </div>
-      </div>
+          <YAxis hide domain={[0, 'dataMax']} />
+          <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(5, 10, 48, 0.06)' }} />
+          <Legend
+            verticalAlign="bottom"
+            height={24}
+            wrapperStyle={{ color: 'var(--color-text-60)', fontSize: 12 }}
+          />
+          <Bar
+            dataKey="approved"
+            name="Aprovados"
+            fill="var(--color-accent-90)"
+            radius={[4, 4, 0, 0]}
+            maxBarSize={36}
+          />
+          <Bar
+            dataKey="rejected"
+            name="Rejeitados"
+            fill="rgba(248, 113, 113, 0.75)"
+            radius={[4, 4, 0, 0]}
+            maxBarSize={36}
+          />
+        </ReBarChart>
+      </ResponsiveContainer>
     </div>
   );
 }

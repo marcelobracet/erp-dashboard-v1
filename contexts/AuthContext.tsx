@@ -1,26 +1,19 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { authService, UserProfile } from '@/lib/api/auth';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import type { UserProfile } from '@/lib/api/auth';
 import { useRouter } from 'next/navigation';
 import { isAuthDisabled } from '@/lib/featureFlags';
-import {
-  initKeycloak,
-  isKeycloakEnabled,
-  login as keycloakLogin,
-  logout as keycloakLogout,
-  register as keycloakRegister,
-  updateToken as keycloakUpdateToken,
-  getTokenParsed,
-} from '@/lib/auth/keycloak';
+import { signIn, signOut, useSession } from 'next-auth/react';
+import { setTenantIdSync } from '@/lib/auth/tenant';
 
 interface AuthContextType {
   user: UserProfile | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
-  logout: () => void;
+  login: () => Promise<void>;
+  register: () => Promise<void>;
+  logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
 
@@ -34,164 +27,78 @@ const AUTH_DISABLED_USER: UserProfile = {
 };
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [mounted, setMounted] = useState(false);
   const router = useRouter();
+  const { data: session, status } = useSession();
 
-  // Mark as mounted to prevent hydration mismatch
+  const isLoading = !isAuthDisabled() && status === 'loading';
+
+  const user = useMemo<UserProfile | null>(() => {
+    if (isAuthDisabled()) return AUTH_DISABLED_USER;
+    if (status !== 'authenticated') return null;
+
+    const roles = session?.roles ?? [];
+    const role = roles.includes('admin') ? 'admin' : roles.includes('user') ? 'user' : roles[0] ?? 'user';
+
+    return {
+      id: session?.user?.id ?? session?.user?.email ?? 'user',
+      email: session?.user?.email ?? '',
+      name: session?.user?.name ?? session?.user?.email ?? 'Usuário',
+      role,
+      tenant_id: session?.tenant_id,
+      roles,
+    };
+  }, [session, status]);
+
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const refreshUser = useCallback(async () => {
     if (isAuthDisabled()) {
-      setUser((prev) => prev ?? AUTH_DISABLED_USER);
-      setIsLoading(false);
+      setTenantIdSync('auth-disabled');
       return;
     }
+    setTenantIdSync(session?.tenant_id ?? null);
+  }, [session?.tenant_id]);
 
-    if (typeof window === 'undefined') {
-      setIsLoading(false);
-      return;
-    }
+  const refreshUser = async () => {
+    // With NextAuth, session is the source of truth.
+    return;
+  };
 
-    if (isKeycloakEnabled()) {
-      try {
-        const authenticated = await initKeycloak({ onLoad: 'check-sso' });
-
-        if (!authenticated) {
-          setUser(null);
-          return;
-        }
-
-        await keycloakUpdateToken(30);
-        const parsed = await getTokenParsed();
-        const roles = parsed?.realm_access?.roles ?? [];
-
-        const role = roles.includes('admin')
-          ? 'admin'
-          : roles.includes('user')
-            ? 'user'
-            : roles[0] || 'user';
-
-        const profile: UserProfile = {
-          id: parsed?.sub || 'keycloak-user',
-          email: parsed?.email || '',
-          name: parsed?.name || parsed?.preferred_username || 'Usuário',
-          role,
-          tenant_id: parsed?.tenant_id,
-          roles,
-        };
-
-        setUser(profile);
-      } catch (error) {
-        console.error('Failed to initialize Keycloak:', error);
-        setUser(null);
-      } finally {
-        setIsLoading(false);
-      }
-
-      return;
-    }
-
-    // Only fetch user if we're on the client side and authenticated
-    if (!authService.isAuthenticated()) {
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      const profile = await authService.getProfile();
-      setUser(profile);
-    } catch (error) {
-      console.error('Failed to fetch user profile:', error);
-      authService.logout();
-      setUser(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    // Only refresh user after component is mounted
-    if (mounted) {
-      refreshUser();
-    }
-  }, [mounted, refreshUser]);
-
-  const login = async (email: string, password: string) => {
-    try {
-      if (isAuthDisabled()) {
-        setUser((prev) => prev ?? AUTH_DISABLED_USER);
-        router.push('/dashboard');
-        return;
-      }
-
-      if (isKeycloakEnabled()) {
-        await keycloakLogin({ redirectUri: `${window.location.origin}/dashboard` });
-        return;
-      }
-
-      const response = await authService.login({ email, password });
-      
-      if (response.user) {
-        setUser(response.user);
-      } else {
-        await refreshUser();
-      }
-
+  const login = async () => {
+    if (isAuthDisabled()) {
       router.push('/dashboard');
-    } catch (error) {
-      throw error;
-    }
-  };
-
-  const register = async (name: string, email: string, password: string) => {
-    try {
-      if (isAuthDisabled()) {
-        setUser((prev) => prev ?? AUTH_DISABLED_USER);
-        router.push('/dashboard');
-        return;
-      }
-
-      if (isKeycloakEnabled()) {
-        await keycloakRegister({ redirectUri: `${window.location.origin}/dashboard` });
-        return;
-      }
-
-      const response = await authService.register({ name, email, password });
-
-      if (response.access_token) {
-        if (response.user) {
-          setUser(response.user as UserProfile);
-        } else {
-          await refreshUser();
-        }
-
-        router.push('/dashboard');
-        return;
-      }
-
-      await login(email, password);
-    } catch (error) {
-      throw error;
-    }
-  };
-
-  const logout = () => {
-    if (isKeycloakEnabled()) {
-      keycloakLogout({ redirectUri: `${window.location.origin}/auth/login` }).catch((err) => {
-        console.error('Failed to logout from Keycloak:', err);
-        router.push('/auth/login');
-      });
-      setUser(null);
       return;
     }
+    const result = await signIn('keycloak', {
+      callbackUrl: `${window.location.origin}/dashboard`,
+      redirect: false,
+    });
 
-    authService.logout();
-    setUser(null);
-    router.push('/auth/login');
+    if (!result) throw new Error('OAuthSignin');
+    if (result.error) throw new Error(result.error);
+    if (result.url) window.location.href = result.url;
+  };
+
+  const register = async () => {
+    if (isAuthDisabled()) {
+      router.push('/dashboard');
+      return;
+    }
+    // Keycloak handles registration on its own UI (if enabled).
+    const result = await signIn('keycloak', {
+      callbackUrl: `${window.location.origin}/dashboard`,
+      redirect: false,
+    });
+
+    if (!result) throw new Error('OAuthSignin');
+    if (result.error) throw new Error(result.error);
+    if (result.url) window.location.href = result.url;
+  };
+
+  const logout = async () => {
+    if (isAuthDisabled()) {
+      router.push('/auth/login');
+      return;
+    }
+    await signOut({ callbackUrl: `${window.location.origin}/auth/login` });
   };
 
   return (
@@ -199,7 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         user,
         isLoading,
-        isAuthenticated: isAuthDisabled() || !!user,
+        isAuthenticated: isAuthDisabled() || status === 'authenticated',
         login,
         register,
         logout,

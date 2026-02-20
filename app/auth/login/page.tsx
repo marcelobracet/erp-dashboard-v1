@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import LoginForm from '@/components/auth/LoginForm';
 
 export default function LoginPage() {
@@ -8,9 +9,9 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       {/* Animated background elements */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-amber-300 rounded-full mix-blend-multiply filter blur-xl opacity-15 animate-blob" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-amber-500 rounded-full mix-blend-multiply filter blur-xl opacity-10 animate-blob animation-delay-2000" />
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-amber-200 rounded-full mix-blend-multiply filter blur-xl opacity-10 animate-blob animation-delay-4000" />
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-brand-cyan rounded-full mix-blend-multiply filter blur-xl opacity-15 animate-blob" />
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-brand-blue rounded-full mix-blend-multiply filter blur-xl opacity-10 animate-blob animation-delay-2000" />
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-brand-sky rounded-full mix-blend-multiply filter blur-xl opacity-10 animate-blob animation-delay-4000" />
       </div>
 
       <div className="relative z-10 w-full max-w-md">
@@ -18,20 +19,15 @@ export default function LoginPage() {
         <div className="bg-glass-5 backdrop-blur-xl rounded-2xl shadow-2xl border border-glass-10 p-8 md:p-10">
           {/* Header */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-2xl bg-gradient-to-br from-accent to-accent-hover shadow-lg">
-              <svg
-                className="w-8 h-8 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-                />
-              </svg>
+            <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-2xl shadow-lg">
+              {/* use logo.svg here */}
+              <Image
+                src="/logo.svg"
+                alt="OnMarmoraria Logo"
+                className="w-full h-full"
+                width={500}
+                height={500}
+              />
             </div>
 
             <h1 className="text-3xl font-bold text-foreground mb-2">

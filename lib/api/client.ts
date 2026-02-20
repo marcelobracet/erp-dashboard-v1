@@ -1,9 +1,5 @@
 import { API_CONFIG, API_TIMEOUT } from './config';
-import {
-  getAccessToken,
-  isKeycloakEnabled,
-  updateToken as keycloakUpdateToken,
-} from '@/lib/auth/keycloak';
+import { getSession } from 'next-auth/react';
 
 export interface ApiError {
   message: string;
@@ -96,7 +92,7 @@ export class ApiClient {
       clearTimeout(timeoutId);
 
       // Handle 401 Unauthorized - try to refresh token (but only if we have a token)
-      if (!isKeycloakEnabled() && response.status === 401 && retry && endpoint !== API_CONFIG.endpoints.auth.refresh && endpoint !== API_CONFIG.endpoints.auth.login) {
+      if (response.status === 401 && retry && endpoint !== API_CONFIG.endpoints.auth.refresh && endpoint !== API_CONFIG.endpoints.auth.login) {
         // Only try refresh if we have a token (meaning this is a session expiry, not invalid credentials)
         if (token) {
           let originalError: ApiError | null = null;
@@ -202,12 +198,15 @@ export class ApiClient {
   }
 
   private async getAuthToken(): Promise<string | null> {
-    if (!isKeycloakEnabled() || typeof window === 'undefined') {
-      return this.getToken();
-    }
+    if (typeof window === 'undefined') return null;
 
-    await keycloakUpdateToken(30);
-    return await getAccessToken();
+    // Prefer NextAuth session token (OIDC via Keycloak)
+    const session = await getSession();
+    const accessToken = session?.accessToken;
+    if (typeof accessToken === 'string' && accessToken.trim()) return accessToken;
+
+    // Fallback to legacy localStorage token (if any)
+    return this.getToken();
   }
 
   setToken(token: string): void {

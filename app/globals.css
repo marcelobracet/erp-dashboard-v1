@@ -1,32 +1,55 @@
 @import "tailwindcss";
 
 :root {
+  /*
+    Paleta (imagem):
+    - Taupe: #8c756a
+    - Cyan:  #1ac8db
+    - Teal:  #0292b7
+    - Sky:   #99dfec
+    - Blue:  #233dff
+    - Navy:  #050a30
+    - Ice:   #f4f6fc
+
+    Dica: altere SOMENTE os tokens abaixo para trocar o tema inteiro.
+  */
+
   /* Base */
-  --background: #09090b; /* zinc-950 */
-  --foreground: #ffffff; /* white */
+  --background: #f4f6fc; /* ice */
+  --foreground: #050a30; /* navy */
 
   /* Overlays */
-  --overlay-90: rgba(0, 0, 0, 0.9); /* black/90 */
-  --overlay-40: rgba(0, 0, 0, 0.4); /* black/40 */
+  --overlay-90: rgba(5, 10, 48, 0.9); /* navy/90 */
+  --overlay-40: rgba(5, 10, 48, 0.4); /* navy/40 */
 
   /* Text */
-  --text-80: rgba(255, 255, 255, 0.8); /* white/80 */
-  --text-60: rgba(255, 255, 255, 0.6); /* white/60 */
+  --text-80: rgba(5, 10, 48, 0.8);
+  --text-60: rgba(5, 10, 48, 0.6);
 
   /* Glass surfaces / borders */
-  --glass-5: rgba(255, 255, 255, 0.05);
-  --glass-10: rgba(255, 255, 255, 0.1);
-  --glass-15: rgba(255, 255, 255, 0.15);
+  --glass-5: rgba(255, 255, 255, 0.65);
+  --glass-10: rgba(255, 255, 255, 0.8);
+  --glass-15: rgba(255, 255, 255, 0.9);
 
-  /* Accent (marmoraria) */
-  --amber-500: #f59e0b;
-  --amber-400: #fbbf24;
-  --amber-300: #fcd34d;
-  --amber-200: #fde68a;
+  /* Brand (nomes fáceis p/ usar no Tailwind) */
+  --brand-taupe: #8c756a;
+  --brand-cyan: #1ac8db;
+  --brand-teal: #0292b7;
+  --brand-sky: #99dfec;
+  --brand-blue: #233dff;
+  --brand-navy: #050a30;
+  --brand-ice: #f4f6fc;
 
-  --amber-500-15: rgba(245, 158, 11, 0.15);
-  --amber-500-20: rgba(245, 158, 11, 0.2);
-  --amber-400-90: rgba(251, 191, 36, 0.9);
+  /* Semantic (use no app: bg-accent, text-accent-detail, etc.) */
+  --accent: var(--brand-blue);
+  --accent-hover: var(--brand-teal);
+  --accent-detail: var(--brand-blue);
+  --accent-muted: var(--brand-teal);
+  --accent-soft: var(--brand-sky);
+
+  --accent-15: rgba(35, 61, 255, 0.15); /* blue/15 */
+  --accent-20: rgba(35, 61, 255, 0.2); /* blue/20 */
+  --accent-90: rgba(2, 146, 183, 0.9); /* teal/90 */
 }
 
 @theme inline {
@@ -40,29 +63,48 @@
   --color-glass-10: var(--glass-10);
   --color-glass-15: var(--glass-15);
 
-  /* Accent colors */
-  --color-amber-500: var(--amber-500);
-  --color-amber-400: var(--amber-400);
-  --color-amber-300: var(--amber-300);
-  --color-amber-200: var(--amber-200);
-  --color-amber-500-15: var(--amber-500-15);
-  --color-amber-500-20: var(--amber-500-20);
-  --color-amber-400-90: var(--amber-400-90);
+  /* Brand colors */
+  --color-brand-taupe: var(--brand-taupe);
+  --color-brand-cyan: var(--brand-cyan);
+  --color-brand-teal: var(--brand-teal);
+  --color-brand-sky: var(--brand-sky);
+  --color-brand-blue: var(--brand-blue);
+  --color-brand-navy: var(--brand-navy);
+  --color-brand-ice: var(--brand-ice);
 
-  /* Semantic accent aliases */
-  --color-accent: var(--amber-500);
-  --color-accent-hover: var(--amber-400);
-  --color-accent-detail: var(--amber-300);
-  --color-accent-muted: var(--amber-200);
-  --color-accent-15: var(--amber-500-15);
-  --color-accent-20: var(--amber-500-20);
-  --color-accent-90: var(--amber-400-90);
+  /* Semantic aliases */
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-detail: var(--accent-detail);
+  --color-accent-muted: var(--accent-muted);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-15: var(--accent-15);
+  --color-accent-20: var(--accent-20);
+  --color-accent-90: var(--accent-90);
+
+  /* Extra semantic helpers */
+  --color-primary: var(--brand-blue);
+  --color-secondary: var(--brand-teal);
+  --color-highlight: var(--brand-cyan);
+  --color-ink: var(--brand-navy);
+  --color-muted: var(--brand-taupe);
+  --color-surface: #ffffff;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 html {
-  color-scheme: dark;
+  color-scheme: light;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: #ffffff;
+  }
 }
 
 body {

@@ -10,6 +10,7 @@ import { quoteService, Quote, Client } from '@/lib/api/services';
 import { usePermissions } from '@/hooks/usePermissions';
 import { ProtectedComponent } from '@/components/auth/ProtectedComponent';
 import { formatDate, formatCurrency } from '@/lib/utils/format';
+import { useRouter } from 'next/navigation';
 
 const statusColors: Record<string, string> = {
   pending: 'bg-accent-15 text-accent-muted',
@@ -19,6 +20,7 @@ const statusColors: Record<string, string> = {
 };
 
 function QuotesContent() {
+  const router = useRouter();
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -108,9 +110,7 @@ function QuotesContent() {
             <p className="text-text-80 mt-1">Gerencie seus orçamentos e propostas</p>
           </div>
           <ProtectedComponent resource="quotes" action="create">
-            <Button>
-              Novo Orçamento
-            </Button>
+            <Button onClick={() => router.push('/dashboard/quotes/new')}>Novo Orçamento</Button>
           </ProtectedComponent>
         </div>
 
@@ -133,8 +133,22 @@ function QuotesContent() {
           data={filteredQuotes}
           columns={columns}
           loading={loading}
+          onRowClick={(q) => router.push(`/dashboard/quotes/${q.id}`)}
           actions={(quote) => (
             <div className="flex items-center gap-2 justify-end">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  router.push(`/dashboard/quotes/${quote.id}`);
+                }}
+                className="text-accent-detail hover:text-accent-muted"
+                title="Ver"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+              </button>
               {hasPermission('quotes', 'update_status') && (
                 <select
                   value={quote.status}

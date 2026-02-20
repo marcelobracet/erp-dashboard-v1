@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
+import Image from 'next/image';
 
 interface NavItem {
   name: string;
@@ -133,14 +134,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex items-center justify-between h-16 px-6 border-b border-glass-10">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent to-accent-hover flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
-              </div>
-              <span className="text-xl font-bold text-foreground">OnMarmoraria</span>
+          <div className="flex items-center justify-between h-24 px-6 border-b border-glass-10">
+            <div className="flex mt-6 gap-2">
+                <Image
+                  src="/logo-texto.svg"
+                  alt="OnMarmoraria Logo"
+                  className="w-full h-full flex items-center justify-center"
+                  width={256}
+                  height={256}
+                />
             </div>
             <button
               onClick={() => setSidebarOpen(false)}
@@ -188,8 +190,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </p>
               </div>
             </div>
-            <button
-              onClick={logout}
+              <button
+                onClick={() => {
+                  void logout();
+                }}
               className="w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
             >
               Sair
