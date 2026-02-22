@@ -19,8 +19,7 @@ export default function LoginPage() {
         <div className="bg-glass-5 backdrop-blur-xl rounded-2xl shadow-2xl border border-glass-10 p-8 md:p-10">
           {/* Header */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-2xl shadow-lg">
-              {/* use logo.svg here */}
+            <div className="inline-flex items-center justify-center w-36 h-24 rounded-2xl">
               <Image
                 src="/logo.svg"
                 alt="OnMarmoraria Logo"
@@ -44,10 +43,8 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Login Form */}
           <LoginForm />
 
-          {/* Footer */}
           <div className="mt-6 text-center">
             <p className="text-sm text-text-60">
               Não tem uma conta?{' '}
