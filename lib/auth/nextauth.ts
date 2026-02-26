@@ -6,6 +6,7 @@ type KeycloakTokenClaims = {
   sub?: string;
   tenant_id?: string;
   realm_access?: { roles?: string[] };
+  resource_access?: Record<string, { roles?: string[] }>;
 };
 
 function mustGetEnv(name: string): string {
@@ -136,7 +137,12 @@ export const authOptions: NextAuthOptions = {
         const claims = decodeJwtClaims(account.access_token ?? account.id_token);
         token.userId = claims.sub ?? token.sub;
         token.tenantId = claims.tenant_id;
-        token.roles = uniqueStrings(claims.realm_access?.roles ?? []);
+
+        const realmRoles = claims.realm_access?.roles ?? [];
+        const clientRoles = Object.values(claims.resource_access ?? {}).flatMap(
+          (c) => c.roles ?? [],
+        );
+        token.roles = uniqueStrings([...realmRoles, ...clientRoles]);
 
         // Multi-tenant safety: if tenant claim is missing, mark error.
         if (!token.tenantId) {
@@ -165,7 +171,13 @@ export const authOptions: NextAuthOptions = {
         const claims = decodeJwtClaims(token.accessToken ?? token.idToken);
         token.userId = claims.sub ?? token.userId ?? token.sub;
         token.tenantId = claims.tenant_id ?? token.tenantId;
-        token.roles = uniqueStrings([...(claims.realm_access?.roles ?? []), ...(token.roles ?? [])]);
+
+        // Extrai roles do realm E de todos os clientes registrados no Keycloak
+        const realmRoles = claims.realm_access?.roles ?? [];
+        const clientRoles = Object.values(claims.resource_access ?? {}).flatMap(
+          (c) => c.roles ?? [],
+        );
+        token.roles = uniqueStrings([...realmRoles, ...clientRoles]);
 
         if (!token.tenantId) token.error = 'MissingTenantId';
       }

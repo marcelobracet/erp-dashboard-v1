@@ -6,11 +6,18 @@ import { useRouter } from 'next/navigation';
 import { isAuthDisabled } from '@/lib/featureFlags';
 import { signIn, signOut, useSession } from 'next-auth/react';
 import { setTenantIdSync } from '@/lib/auth/tenant';
+import {
+  type RolePermissionsMap,
+  DEFAULT_ROLE_PERMISSIONS,
+  resolveAppRoles,
+  fetchPermissionsFromApi,
+} from '@/lib/auth/permissions';
 
 interface AuthContextType {
   user: UserProfile | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  rolePermissions: RolePermissionsMap;
   login: () => Promise<void>;
   register: () => Promise<void>;
   logout: () => Promise<void>;
@@ -32,12 +39,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const isLoading = !isAuthDisabled() && status === 'loading';
 
+  const [rolePermissions, setRolePermissions] = useState<RolePermissionsMap>(DEFAULT_ROLE_PERMISSIONS);
+
+  // Carrega permissões da API sempre que o token mudar.
+  // Caso o endpoint não exista/esteja indisponível, mantém os defaults.
+  useEffect(() => {
+    if (isAuthDisabled() || !session?.accessToken) return;
+    fetchPermissionsFromApi(session.accessToken).then((perms) => {
+      if (perms) setRolePermissions(perms);
+    });
+  }, [session?.accessToken]);
+
   const user = useMemo<UserProfile | null>(() => {
     if (isAuthDisabled()) return AUTH_DISABLED_USER;
     if (status !== 'authenticated') return null;
 
-    const roles = session?.roles ?? [];
-    const role = roles.includes('admin') ? 'admin' : roles.includes('user') ? 'user' : roles[0] ?? 'user';
+    const rawRoles = session?.roles ?? [];
+    const roles = resolveAppRoles(rawRoles);
+    const role = roles.includes('admin') ? 'admin' : roles[0] ?? 'user';
 
     return {
       id: session?.user?.id ?? session?.user?.email ?? 'user',
@@ -107,6 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         isLoading,
         isAuthenticated: isAuthDisabled() || status === 'authenticated',
+        rolePermissions,
         login,
         register,
         logout,

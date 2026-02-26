@@ -2,55 +2,39 @@
 
 import { useAuth } from '@/contexts/AuthContext';
 import { isAuthDisabled } from '@/lib/featureFlags';
+import type { Permission } from '@/lib/auth/permissions';
 
 export type UserRole = 'admin' | 'user' | string;
-
-interface Permission {
-  resource: string;
-  actions: string[];
-}
-
-const rolePermissions: Record<string, Permission[]> = {
-  admin: [
-    { resource: 'users', actions: ['read', 'create', 'update', 'delete'] },
-    { resource: 'tenants', actions: ['read', 'create', 'update', 'delete'] },
-    { resource: 'clients', actions: ['read', 'create', 'update', 'delete'] },
-    { resource: 'products', actions: ['read', 'create', 'update', 'delete', 'export'] },
-    { resource: 'quotes', actions: ['read', 'create', 'update', 'delete', 'update_status'] },
-    { resource: 'settings', actions: ['read', 'update'] },
-    { resource: 'reports', actions: ['read', 'export'] },
-  ],
-  user: [
-    { resource: 'clients', actions: ['read', 'create', 'update', 'delete'] },
-    { resource: 'products', actions: ['read', 'create', 'update', 'delete'] },
-    { resource: 'quotes', actions: ['read', 'create', 'update', 'delete', 'update_status'] },
-    { resource: 'settings', actions: ['read'] },
-  ],
-};
+export type { Permission };
 
 export function usePermissions() {
-  const { user } = useAuth();
+  const { user, rolePermissions } = useAuth();
 
+  const effectiveRoles = (): string[] => {
+    if (isAuthDisabled()) return ['admin'];
+    return user?.roles?.length ? user.roles : user?.role ? [user.role] : [];
+  };
+
+  /**
+   * Verifica se o usuário tem permissão para a action em um resource.
+   * Aceita QUALQUER das suas roles — ex: usuário com ['admin', 'user'] recebe permissões das duas.
+   */
   const hasPermission = (resource: string, action: string): boolean => {
     if (isAuthDisabled()) return true;
-    if (!user?.role) return false;
-    
-    const permissions = rolePermissions[user.role] || [];
-    const resourcePerms = permissions.find(p => p.resource === resource);
-    
-    return resourcePerms?.actions.includes(action) || false;
+    return effectiveRoles().some((role) => {
+      const permissions: Permission[] = rolePermissions?.[role] ?? [];
+      return permissions.some((p) => p.resource === resource && p.actions.includes(action));
+    });
   };
 
   const hasAnyPermission = (resource: string, actions: string[]): boolean => {
-    return actions.some(action => hasPermission(resource, action));
+    return actions.some((action) => hasPermission(resource, action));
   };
 
   const hasRole = (roles: UserRole | UserRole[]): boolean => {
     if (isAuthDisabled()) return true;
-    if (!user?.role && !user?.roles?.length) return false;
     const rolesArray = Array.isArray(roles) ? roles : [roles];
-    const effectiveRoles = user?.roles?.length ? user.roles : user?.role ? [user.role] : [];
-    return rolesArray.some((r) => effectiveRoles.includes(r));
+    return rolesArray.some((r) => effectiveRoles().includes(r));
   };
 
   const canAccess = (resource: string): boolean => {
@@ -63,7 +47,10 @@ export function usePermissions() {
     hasAnyPermission,
     hasRole,
     canAccess,
-    role: isAuthDisabled() ? 'admin' : user?.role || null,
+    /** Role principal do usuário (primeira da lista resolvida). */
+    role: isAuthDisabled() ? 'admin' : effectiveRoles()[0] ?? null,
+    /** Todas as roles do usuário após resolução. */
+    roles: isAuthDisabled() ? ['admin'] : effectiveRoles(),
   };
 }
 

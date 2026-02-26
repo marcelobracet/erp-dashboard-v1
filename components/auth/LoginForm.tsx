@@ -20,8 +20,14 @@ function mapNextAuthError(code: string): string {
   }
 }
 
+type LoginFormProps = {
+  email?: string;
+  password?: string;
+  general?: string;
+};
+
 export default function LoginForm() {
-  const [errors, setErrors] = useState<{ email?: string; password?: string; general?: string }>({});
+  const [errors, setErrors] = useState<LoginFormProps>({});
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
 
@@ -43,8 +49,10 @@ export default function LoginForm() {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erro ao redirecionar para o login.';
       setErrors({ general: errorMessage });
+    }finally {
       setIsLoading(false);
     }
+
   };
 
   if (ssoEnabled) {

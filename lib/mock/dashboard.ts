@@ -68,7 +68,6 @@ export function getMockDashboardData(baseDateISO = '2026-02-10T12:00:00.000Z'): 
   const now = new Date(baseDateISO);
   const rand = lcg(20260210);
 
-  // Clients: 22 total, some created this month and last.
   const clientNames = [
     'Granito Central',
     'Construtora Aurora',
@@ -97,7 +96,6 @@ export function getMockDashboardData(baseDateISO = '2026-02-10T12:00:00.000Z'): 
   const clients: MockClient[] = clientNames.map((name, i) => {
     const id = `c_${String(i + 1).padStart(3, '0')}`;
 
-    // Spread over last 120 days, with a bias to the current month.
     const bias = rand() < 0.45 ? clampInt(rand() * 25, 0, 25) : clampInt(25 + rand() * 95, 25, 120);
     const createdAt = addDays(now, -bias);
 

@@ -1,5 +1,4 @@
 export function isAuthDisabled(): boolean {
-  // Allow runtime override in the browser (no rebuild needed)
   if (typeof window !== 'undefined') {
     const raw = window.localStorage.getItem('auth_disabled');
     if (raw != null) {
@@ -8,7 +7,6 @@ export function isAuthDisabled(): boolean {
     }
   }
 
-  // Build-time env for Next.js client bundles
   const env = process.env.NEXT_PUBLIC_AUTH_DISABLED;
   if (!env) return false;
   const v = env.trim().toLowerCase();
@@ -16,7 +14,6 @@ export function isAuthDisabled(): boolean {
 }
 
 export function isLocalProductsEnabled(): boolean {
-  // Allow runtime override in the browser (no rebuild needed)
   if (typeof window !== 'undefined') {
     const raw = window.localStorage.getItem('products_local');
     if (raw != null) {
@@ -32,7 +29,6 @@ export function isLocalProductsEnabled(): boolean {
 }
 
 export function isLocalQuotesEnabled(): boolean {
-  // Allow runtime override in the browser (no rebuild needed)
   if (typeof window !== 'undefined') {
     const raw = window.localStorage.getItem('quotes_local');
     if (raw != null) {
