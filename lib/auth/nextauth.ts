@@ -1,6 +1,7 @@
 import axios from 'axios';
 import type { NextAuthOptions } from 'next-auth';
 import KeycloakProvider from 'next-auth/providers/keycloak';
+import fs from 'node:fs';
 
 type KeycloakTokenClaims = {
   sub?: string;
@@ -13,6 +14,29 @@ function mustGetEnv(name: string): string {
   const v = process.env[name];
   if (!v) throw new Error(`Missing env var: ${name}`);
   return v;
+}
+
+function isDockerRuntime(): boolean {
+  try {
+    return fs.existsSync('/.dockerenv');
+  } catch {
+    return false;
+  }
+}
+
+function getKeycloakIssuer(): string {
+  const issuer = process.env.KEYCLOAK_ISSUER;
+  const issuerInternal = process.env.KEYCLOAK_ISSUER_INTERNAL;
+
+  const picked = isDockerRuntime() ? issuerInternal ?? issuer : issuer ?? issuerInternal;
+  if (!picked) {
+    throw new Error(
+      'Missing env var: KEYCLOAK_ISSUER (and/or KEYCLOAK_ISSUER_INTERNAL). ' +
+        'Example: http://localhost:8081/realms/<realm>'
+    );
+  }
+
+  return picked;
 }
 
 function base64UrlToString(input: string) {
@@ -57,7 +81,13 @@ async function refreshKeycloakAccessToken(token: {
     return { ...token, error: 'NoRefreshToken' as const };
   }
 
-  const issuer = process.env.KEYCLOAK_ISSUER;
+  const issuer = (() => {
+    try {
+      return getKeycloakIssuer();
+    } catch {
+      return undefined;
+    }
+  })();
   const clientId = process.env.KEYCLOAK_CLIENT_ID;
   const clientSecret = process.env.KEYCLOAK_CLIENT_SECRET;
 
@@ -109,7 +139,7 @@ export const authOptions: NextAuthOptions = {
     KeycloakProvider({
       clientId: mustGetEnv('KEYCLOAK_CLIENT_ID'),
       clientSecret: mustGetEnv('KEYCLOAK_CLIENT_SECRET'),
-      issuer: mustGetEnv('KEYCLOAK_ISSUER'),
+      issuer: getKeycloakIssuer(),
     }),
   ],
   pages: {

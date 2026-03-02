@@ -45,8 +45,10 @@ export default function LoginForm() {
     setErrors({});
     setIsLoading(true);
     try {
-      await login();
+      const res = await login();
+      console.log('Login response:', res);
     } catch (error) {
+      console.error('Login error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Erro ao redirecionar para o login.';
       setErrors({ general: errorMessage });
     }finally {

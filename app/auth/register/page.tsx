@@ -13,9 +13,7 @@ export default function RegisterPage() {
       </div>
 
       <div className="relative z-10 w-full max-w-md">
-        {/* Card Container */}
         <div className="bg-glass-5 backdrop-blur-xl rounded-2xl shadow-2xl border border-glass-10 p-8 md:p-10">
-          {/* Header */}
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-2xl bg-gradient-to-br from-accent to-accent-hover shadow-lg">
               <svg
@@ -41,10 +39,8 @@ export default function RegisterPage() {
             </p>
           </div>
 
-          {/* Register Form */}
           <RegisterForm />
 
-          {/* Footer */}
           <div className="mt-6 text-center">
             <p className="text-sm text-text-60">
               Já tem uma conta?{" "}

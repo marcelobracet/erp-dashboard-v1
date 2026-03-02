@@ -1,13 +1,11 @@
 'use client';
 
-import React from 'react';
 import Image from 'next/image';
 import LoginForm from '@/components/auth/LoginForm';
 
 export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      {/* Animated background elements */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-brand-cyan rounded-full mix-blend-multiply filter blur-xl opacity-15 animate-blob" />
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-brand-blue rounded-full mix-blend-multiply filter blur-xl opacity-10 animate-blob animation-delay-2000" />
@@ -15,9 +13,7 @@ export default function LoginPage() {
       </div>
 
       <div className="relative z-10 w-full max-w-md">
-        {/* Card Container */}
         <div className="bg-glass-5 backdrop-blur-xl rounded-2xl shadow-2xl border border-glass-10 p-8 md:p-10">
-          {/* Header */}
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-36 h-24 rounded-2xl">
               <Image

@@ -7,6 +7,10 @@ services:
       - 3000:3000
     env_file:
       - .env.docker
+    extra_hosts:
+      - "keycloak.localhost:host-gateway"
+    networks:
+      - erp-network
     volumes:
       - .:/app
       - node_modules:/app/node_modules
@@ -17,3 +21,8 @@ services:
 volumes:
   node_modules:
   next_cache:
+
+networks:
+  erp-network:
+    external: true
+    name: erp-network

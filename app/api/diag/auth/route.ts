@@ -37,6 +37,7 @@ export async function GET(req: Request) {
     (process.env.KEYCLOAK_ISSUER && process.env.KEYCLOAK_ISSUER.trim()) ||
     '';
   const effectiveIssuer = getEffectiveKeycloakIssuer();
+
   const origin = (() => {
     try {
       return new URL(req.url).origin;
@@ -50,7 +51,11 @@ export async function GET(req: Request) {
     ? `${effectiveBaseUrl.replace(/\/$/, '')}/api/auth/callback/keycloak`
     : null;
 
-  const wellKnownUrl = effectiveIssuer
+  const wellKnownUrl = keycloakIssuer
+    ? `${keycloakIssuer.replace(/\/$/, '')}/.well-known/openid-configuration`
+    : null;
+
+  const effectiveWellKnownUrl = effectiveIssuer
     ? `${effectiveIssuer.replace(/\/$/, '')}/.well-known/openid-configuration`
     : null;
 
@@ -60,9 +65,9 @@ export async function GET(req: Request) {
     error?: string;
   } | null = null;
 
-  if (wellKnownUrl) {
+  if (effectiveWellKnownUrl) {
     try {
-      const res = await fetch(wellKnownUrl, { cache: 'no-store' });
+      const res = await fetch(effectiveWellKnownUrl, { cache: 'no-store' });
       wellKnown = { ok: res.ok, status: res.status };
     } catch (e) {
       wellKnown = {
@@ -90,7 +95,7 @@ export async function GET(req: Request) {
 
       computed: {
         callbackUrl,
-        wellKnownUrl: wellKnownUrl ? redactUrl(wellKnownUrl) : null,
+        wellKnownUrl: effectiveWellKnownUrl ? redactUrl(effectiveWellKnownUrl) : null,
         wellKnown,
       },
     },

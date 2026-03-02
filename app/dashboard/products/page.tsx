@@ -124,7 +124,6 @@ function ProductsContent() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Produtos</h1>
@@ -147,7 +146,6 @@ function ProductsContent() {
           </div>
         </div>
 
-        {/* Search */}
         <div className="app-card p-4">
           <Input
             placeholder="Buscar por nome ou SKU..."
@@ -161,7 +159,6 @@ function ProductsContent() {
           />
         </div>
 
-        {/* Table */}
         <Table
           data={filteredProducts}
           columns={columns}
@@ -198,7 +195,6 @@ function ProductsContent() {
           )}
         />
 
-        {/* Product Modal */}
         <Modal
           isOpen={isModalOpen}
           onClose={() => {

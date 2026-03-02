@@ -23,12 +23,9 @@ export function ProtectedComponent({
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 
-  // During SSR, always render children to prevent hydration mismatch
-  // The actual permission check will happen after mount
   if (!mounted) {
     return <>{children}</>;
   }

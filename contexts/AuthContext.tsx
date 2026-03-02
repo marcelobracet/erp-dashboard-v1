@@ -87,7 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     const result = await signIn('keycloak', {
-      callbackUrl: `${window.location.origin}/dashboard`,
+      callbackUrl: '/dashboard',
       redirect: false,
     });
 
@@ -103,7 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     // Keycloak handles registration on its own UI (if enabled).
     const result = await signIn('keycloak', {
-      callbackUrl: `${window.location.origin}/dashboard`,
+      callbackUrl: '/dashboard',
       redirect: false,
     });
 
@@ -117,7 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       router.push('/auth/login');
       return;
     }
-    await signOut({ callbackUrl: `${window.location.origin}/auth/login` });
+    await signOut({ callbackUrl: '/auth/login' });
   };
 
   return (
