@@ -3,15 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --webpack",
-    "dev:turbo": "next dev --turbo",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
   },
   "dependencies": {
-    "@types/axios": "^0.14.4",
-    "@types/react-icons": "^3.0.0",
     "axios": "^1.13.5",
     "next": "^16.1.6",
     "next-auth": "^4.24.13",
@@ -27,7 +24,6 @@
     "@types/react-dom": "^19",
     "eslint": "^9.0.0",
     "eslint-config-next": "^16.1.6",
-    "next-auth": "^4.24.13",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

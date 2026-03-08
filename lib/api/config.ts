@@ -7,7 +7,7 @@ export const API_CONFIG = {
     },
     users: {
       profile: "/api/v1/users/profile",
-      register: "/api/v1/users/register",
+      register: "/api/v1/auth/register",
       list: "/api/v1/users",
       count: "/api/v1/users/count",
       byId: (id: string) => `/api/v1/users/${id}`,

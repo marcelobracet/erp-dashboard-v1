@@ -1,212 +1,146 @@
+import axios, {
+  type AxiosInstance,
+  type AxiosError,
+  type InternalAxiosRequestConfig,
+} from 'axios';
 import { API_CONFIG, API_TIMEOUT } from './config';
-import { getSession } from 'next-auth/react';
 
 export interface ApiError {
   message: string;
   status?: number;
 }
 
-export class ApiClient {
-  private baseURL: string;
+class ApiClient {
+  /** Exposed so auth.ts can make authenticated requests directly. */
+  readonly axios: AxiosInstance;
+
   private isRefreshing = false;
-  private refreshPromise: Promise<string> | null = null;
+  private refreshSubscribers: Array<(token: string) => void> = [];
 
   constructor(baseURL: string = API_CONFIG.baseURL) {
-    this.baseURL = baseURL;
-  }
+    this.axios = axios.create({
+      baseURL,
+      timeout: API_TIMEOUT,
+      headers: { 'Content-Type': 'application/json' },
+    });
 
-  private async refreshAccessToken(): Promise<string> {
-    if (this.isRefreshing && this.refreshPromise) {
-      return this.refreshPromise;
-    }
+    // ── Request interceptor: attach Bearer token ──────────────────────
+    this.axios.interceptors.request.use((config) => {
+      const token = this.getToken();
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+      return config;
+    });
 
-    this.isRefreshing = true;
-    this.refreshPromise = this.performRefresh();
+    // ── Response interceptor: handle 401 with silent token refresh ────
+    this.axios.interceptors.response.use(
+      (response) => response,
+      async (error: AxiosError) => {
+        const original = error.config as InternalAxiosRequestConfig & {
+          _retry?: boolean;
+        };
 
-    try {
-      const token = await this.refreshPromise;
-      return token;
-    } finally {
-      this.isRefreshing = false;
-      this.refreshPromise = null;
-    }
+        const isAuthRoute =
+          original?.url?.includes('/auth/login') ||
+          original?.url?.includes('/auth/refresh');
+
+        if (
+          error.response?.status === 401 &&
+          !original?._retry &&
+          !isAuthRoute &&
+          this.getToken()
+        ) {
+          if (this.isRefreshing) {
+            // Queue request until refresh completes
+            return new Promise((resolve, reject) => {
+              this.refreshSubscribers.push((newToken) => {
+                original.headers.Authorization = `Bearer ${newToken}`;
+                resolve(this.axios(original));
+              });
+              void reject; // suppress unused warning
+            });
+          }
+
+          original._retry = true;
+          this.isRefreshing = true;
+
+          try {
+            const newToken = await this.performRefresh();
+            this.refreshSubscribers.forEach((cb) => cb(newToken));
+            original.headers.Authorization = `Bearer ${newToken}`;
+            return this.axios(original);
+          } catch {
+            this.removeToken();
+            return Promise.reject(this.normalizeError(error));
+          } finally {
+            this.refreshSubscribers = [];
+            this.isRefreshing = false;
+          }
+        }
+
+        return Promise.reject(this.normalizeError(error));
+      }
+    );
   }
 
   private async performRefresh(): Promise<string> {
     const refreshToken = this.getRefreshToken();
-    if (!refreshToken) {
-      throw new Error('No refresh token available');
-    }
+    if (!refreshToken) throw new Error('No refresh token');
 
-    const response = await fetch(`${this.baseURL}${API_CONFIG.endpoints.auth.refresh}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ refresh_token: refreshToken }),
+    // Raw axios call — bypasses this instance's interceptors
+    const { data } = await axios.post<{
+      access_token: string;
+      refresh_token?: string;
+    }>(`${API_CONFIG.baseURL}${API_CONFIG.endpoints.auth.refresh}`, {
+      refresh_token: refreshToken,
     });
 
-    if (!response.ok) {
-      this.removeToken();
-      throw new Error('Failed to refresh token');
-    }
-
-    const data = await response.json();
-    if (data.access_token) {
-      this.setToken(data.access_token);
-    }
-    if (data.refresh_token) {
-      this.setRefreshToken(data.refresh_token);
-    }
+    if (data.access_token) this.setToken(data.access_token);
+    if (data.refresh_token) this.setRefreshToken(data.refresh_token);
 
     return data.access_token;
   }
 
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {},
-    retry = true
-  ): Promise<T> {
-    const url = `${this.baseURL}${endpoint}`;
-    const token = await this.getAuthToken();
-
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      ...(options.headers as Record<string, string> || {}),
-    };
-
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
-
-    try {
-      const response = await fetch(url, {
-        ...options,
-        headers,
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      // Handle 401 Unauthorized - try to refresh token (but only if we have a token)
-      if (response.status === 401 && retry && endpoint !== API_CONFIG.endpoints.auth.refresh && endpoint !== API_CONFIG.endpoints.auth.login) {
-        // Only try refresh if we have a token (meaning this is a session expiry, not invalid credentials)
-        if (token) {
-          let originalError: ApiError | null = null;
-          
-          // Try to get original error message before refresh
-          try {
-            const errorData: unknown = await response.clone().json().catch(() => null);
-            const message = this.extractErrorMessage(errorData) || 'Session expired';
-            originalError = { message, status: response.status };
-          } catch {
-            // Ignore parsing errors
-          }
-
-          try {
-            await this.refreshAccessToken();
-            // Retry the request with new token
-            return this.request<T>(endpoint, options, false);
-          } catch {
-            this.removeToken();
-            // Use original error message if available, otherwise default message
-            throw originalError || { message: 'Session expired. Please login again.', status: 401 } as ApiError;
-          }
-        }
-      }
-
-      if (!response.ok) {
-        let errorData: unknown = null;
-        try {
-          errorData = await response.json();
-        } catch {
-          errorData = { message: response.statusText || 'An error occurred' } as const;
-        }
-
-        const error: ApiError = {
-          message: this.extractErrorMessage(errorData) || 'An error occurred',
-          status: response.status,
-        };
-
-        throw error;
-      }
-
-      return await response.json();
-    } catch (error) {
-      clearTimeout(timeoutId);
-
-      if (error instanceof Error) {
-        if (error.name === 'AbortError') {
-          throw { message: 'Request timeout', status: 408 } as ApiError;
-        }
-        throw { message: error.message } as ApiError;
-      }
-
-      throw error;
-    }
+  private normalizeError(error: AxiosError): ApiError {
+    const data = error.response?.data as
+      | Record<string, unknown>
+      | undefined;
+    const message =
+      (data?.message as string | undefined) ??
+      (data?.error as string | undefined) ??
+      error.message ??
+      'Ocorreu um erro';
+    return { message, status: error.response?.status };
   }
 
-  private extractErrorMessage(payload: unknown): string | null {
-    if (!payload || typeof payload !== 'object') return null;
-    const rec = payload as Record<string, unknown>;
-    const message = rec.message;
-    const error = rec.error;
-    if (typeof message === 'string' && message.trim()) return message;
-    if (typeof error === 'string' && error.trim()) return error;
-    return null;
+  // ── Convenience wrappers ─────────────────────────────────────────────
+
+  async get<T>(endpoint: string): Promise<T> {
+    const { data } = await this.axios.get<T>(endpoint);
+    return data;
   }
 
-  async get<T>(endpoint: string, options?: RequestInit): Promise<T> {
-    return this.request<T>(endpoint, { ...options, method: 'GET' });
+  async post<T>(endpoint: string, payload?: unknown): Promise<T> {
+    const { data } = await this.axios.post<T>(endpoint, payload);
+    return data;
   }
 
-  async post<T>(endpoint: string, data?: unknown, options?: RequestInit): Promise<T> {
-    return this.request<T>(endpoint, {
-      ...options,
-      method: 'POST',
-      body: data ? JSON.stringify(data) : undefined,
-    });
+  async put<T>(endpoint: string, payload?: unknown): Promise<T> {
+    const { data } = await this.axios.put<T>(endpoint, payload);
+    return data;
   }
 
-  // Method to make requests without token refresh (for auth endpoints)
-  async postWithoutRefresh<T>(endpoint: string, data?: unknown, options?: RequestInit): Promise<T> {
-    return this.request<T>(endpoint, {
-      ...options,
-      method: 'POST',
-      body: data ? JSON.stringify(data) : undefined,
-    }, false); // Pass false to prevent retry
+  async delete<T>(endpoint: string): Promise<T> {
+    const { data } = await this.axios.delete<T>(endpoint);
+    return data;
   }
 
-  async put<T>(endpoint: string, data?: unknown, options?: RequestInit): Promise<T> {
-    return this.request<T>(endpoint, {
-      ...options,
-      method: 'PUT',
-      body: data ? JSON.stringify(data) : undefined,
-    });
-  }
+  // ── Token helpers ─────────────────────────────────────────────────────
 
-  async delete<T>(endpoint: string, options?: RequestInit): Promise<T> {
-    return this.request<T>(endpoint, { ...options, method: 'DELETE' });
-  }
-
-  private getToken(): string | null {
+  getToken(): string | null {
     if (typeof window === 'undefined') return null;
     return localStorage.getItem('access_token');
-  }
-
-  private async getAuthToken(): Promise<string | null> {
-    if (typeof window === 'undefined') return null;
-
-    // Prefer NextAuth session token (OIDC via Keycloak)
-    const session = await getSession();
-    const accessToken = session?.accessToken;
-    if (typeof accessToken === 'string' && accessToken.trim()) return accessToken;
-
-    // Fallback to legacy localStorage token (if any)
-    return this.getToken();
   }
 
   setToken(token: string): void {

@@ -125,6 +125,21 @@ export interface PaginatedResponse<T> {
   limit?: number;
 }
 
+// ── Query helpers ─────────────────────────────────────────────────────────────
+function buildUrl(base: string, params?: Record<string, string | number | undefined>): string {
+  if (!params) return base;
+  const query = Object.entries(params)
+    .filter(([, v]) => v !== undefined && v !== '')
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
+    .join('&');
+  return query ? `${base}?${query}` : base;
+}
+
+function unwrapList<T>(res: T[] | PaginatedResponse<T>): T[] {
+  if (Array.isArray(res)) return res;
+  return res.data ?? [];
+}
+
 // Services
 export const tenantService = {
   list: () => apiClient.get<Tenant[]>(API_CONFIG.endpoints.tenants.list),
@@ -141,7 +156,12 @@ export const tenantService = {
 };
 
 export const clientService = {
-  list: () => apiClient.get<Client[]>(API_CONFIG.endpoints.clients.list),
+  list: async (params?: { page?: number; limit?: number; search?: string }) => {
+    const res = await apiClient.get<Client[] | PaginatedResponse<Client>>(
+      buildUrl(API_CONFIG.endpoints.clients.list, params)
+    );
+    return unwrapList(res);
+  },
   getById: (id: string) =>
     apiClient.get<Client>(API_CONFIG.endpoints.clients.byId(id)),
   create: (data: Partial<Client>) =>
@@ -155,10 +175,13 @@ export const clientService = {
 };
 
 export const productService = {
-  list: async () => {
+  list: async (params?: { page?: number; limit?: number; search?: string }) => {
     if (isLocalProductsEnabled()) return localProductStore.list();
     try {
-      return await apiClient.get<Product[]>(API_CONFIG.endpoints.products.list);
+      const res = await apiClient.get<Product[] | PaginatedResponse<Product>>(
+        buildUrl(API_CONFIG.endpoints.products.list, params)
+      );
+      return unwrapList(res);
     } catch {
       return localProductStore.list();
     }
@@ -298,7 +321,12 @@ export const settingsService = {
 };
 
 export const userService = {
-  list: () => apiClient.get<User[]>(API_CONFIG.endpoints.users.list),
+  list: async (params?: { page?: number; limit?: number }) => {
+    const res = await apiClient.get<User[] | PaginatedResponse<User>>(
+      buildUrl(API_CONFIG.endpoints.users.list, params)
+    );
+    return unwrapList(res);
+  },
   getById: (id: string) =>
     apiClient.get<User>(API_CONFIG.endpoints.users.byId(id)),
   update: (id: string, data: Partial<User>) =>

@@ -1,0 +1,23 @@
+# Dependencies — reinstalled inside the build stage
+node_modules
+
+# Next.js build output — generated during docker build
+.next
+
+# Git
+.git
+.gitignore
+
+# Local env files (use .env.docker inside the container)
+.env
+.env.local
+.env.*.local
+
+# Docs & tooling
+*.md
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# macOS
+.DS_Store

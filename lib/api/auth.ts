@@ -1,5 +1,6 @@
-import { apiClient, ApiError } from "./client";
-import { API_CONFIG } from "./config";
+import axios from 'axios';
+import { apiClient, type ApiError } from './client';
+import { API_CONFIG } from './config';
 
 export interface LoginRequest {
   email: string;
@@ -9,11 +10,14 @@ export interface LoginRequest {
 export interface LoginResponse {
   access_token: string;
   refresh_token: string;
-  user?: {
+  expires_in: number;
+  token_type: string;
+  user: {
     id: string;
-    email: string;
+    tenant_id: string;
     name: string;
-    role: string;
+    email: string;
+    role: 'admin' | 'manager' | 'employee';
   };
 }
 
@@ -21,21 +25,15 @@ export interface RegisterRequest {
   name: string;
   email: string;
   password: string;
+  role?: 'admin' | 'manager' | 'employee';
 }
 
+/** Shape returned by POST /api/v1/auth/register (Go: c.JSON(201, userInfo)) */
 export interface RegisterResponse {
-  access_token?: string;
-  refresh_token?: string;
-  user?: {
-    id: string;
-    email: string;
-    name: string;
-    role?: string;
-  };
-}
-
-export interface RefreshTokenRequest {
-  refresh_token: string;
+  id: string;
+  email: string;
+  name: string;
+  role: 'admin' | 'manager' | 'employee';
 }
 
 export interface RefreshTokenResponse {
@@ -53,135 +51,73 @@ export interface UserProfile {
 }
 
 export const authService = {
+  /**
+   * POST /api/v1/auth/login
+   * Uses a plain axios instance (no auth token, no interceptors).
+   */
   async login(credentials: LoginRequest): Promise<LoginResponse> {
-    // Use direct fetch for login to avoid token refresh logic
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}${
-        API_CONFIG.endpoints.auth.login
-      }`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(credentials),
-      }
-    );
+    try {
+      const { data } = await axios.post<LoginResponse>(
+        `${API_CONFIG.baseURL}${API_CONFIG.endpoints.auth.login}`,
+        credentials,
+        { headers: { 'Content-Type': 'application/json' } }
+      );
 
-    if (!response.ok) {
-      let errorData: { message?: string; error?: string } = {};
-      try {
-        errorData = await response.json();
-      } catch {
-        errorData = { message: response.statusText || "Invalid credentials" };
-      }
-
-      const error: ApiError = {
-        message: errorData.message || errorData.error || "Invalid credentials",
-        status: response.status,
-      };
-
-      if (error?.status === 401) {
-        error.message = "Credenciais inválidas";
-      }
-
-      throw error;
-    }
-
-    const data = await response.json();
-
-    if (data.access_token) {
       apiClient.setToken(data.access_token);
-    }
-
-    if (data.refresh_token) {
       apiClient.setRefreshToken(data.refresh_token);
-    }
 
-    return data;
+      return data;
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const body = err.response?.data as { message?: string; error?: string } | undefined;
+        const status = err.response?.status;
+        const message =
+          status === 401
+            ? 'Credenciais inválidas'
+            : body?.message ?? body?.error ?? 'Erro ao fazer login';
+        throw { message, status } as ApiError;
+      }
+      throw { message: 'Erro ao conectar ao servidor' } as ApiError;
+    }
   },
 
+  /**
+   * POST /api/v1/auth/register   (requires admin Bearer token)
+   * Uses apiClient.axios → the request interceptor automatically attaches
+   * the logged-in admin's token from localStorage.
+   */
   async register(payload: RegisterRequest): Promise<RegisterResponse> {
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}${
-        API_CONFIG.endpoints.users.register
-      }`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      }
-    );
-
-    if (!response.ok) {
-      let errorData: { message?: string; error?: string } = {};
-      try {
-        errorData = await response.json();
-      } catch {
-        errorData = { message: response.statusText || "Failed to register" };
-      }
-
-      const error: ApiError = {
-        message: errorData.message || errorData.error || "Failed to register",
-        status: response.status,
-      };
-
-      if (error?.status === 409) {
-        error.message = "Este email já está em uso";
-      }
-
-      throw error;
+    try {
+      const { data } = await apiClient.axios.post<RegisterResponse>(
+        API_CONFIG.endpoints.users.register,
+        payload
+      );
+      return data;
+    } catch (err) {
+      // The response interceptor already normalises AxiosError → ApiError.
+      // We just enrich the message for known status codes.
+      const e = err as ApiError;
+      if (e.status === 401) e.message = 'Sem permissão. Faça login como administrador.';
+      if (e.status === 403) e.message = 'Acesso negado. Apenas administradores podem criar usuários.';
+      if (e.status === 409) e.message = 'Este e-mail já está em uso.';
+      throw e;
     }
-
-    const data = await response.json();
-
-    if (data.access_token) {
-      apiClient.setToken(data.access_token);
-    }
-
-    if (data.refresh_token) {
-      apiClient.setRefreshToken(data.refresh_token);
-    }
-
-    return data;
   },
 
-  async refreshToken(): Promise<RefreshTokenResponse> {
-    const refreshToken = apiClient.getRefreshToken();
-
-    if (!refreshToken) {
-      throw new Error("No refresh token available");
-    }
-
-    const response = await apiClient.post<RefreshTokenResponse>(
-      API_CONFIG.endpoints.auth.refresh,
-      { refresh_token: refreshToken }
-    );
-
-    if (response.access_token) {
-      apiClient.setToken(response.access_token);
-    }
-
-    if (response.refresh_token) {
-      apiClient.setRefreshToken(response.refresh_token);
-    }
-
-    return response;
-  },
-
+  /**
+   * GET /api/v1/users/profile
+   * Uses apiClient → Bearer token attached automatically.
+   */
   async getProfile(): Promise<UserProfile> {
     return apiClient.get<UserProfile>(API_CONFIG.endpoints.users.profile);
   },
 
+  /** Clears stored tokens. */
   logout(): void {
     apiClient.removeToken();
   },
 
   isAuthenticated(): boolean {
-    return (
-      typeof window !== "undefined" && !!localStorage.getItem("access_token")
-    );
+    return typeof window !== 'undefined' && !!localStorage.getItem('access_token');
   },
 };

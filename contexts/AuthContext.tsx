@@ -1,15 +1,14 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import type { UserProfile } from '@/lib/api/auth';
+import { authService } from '@/lib/api/auth';
 import { useRouter } from 'next/navigation';
 import { isAuthDisabled } from '@/lib/featureFlags';
-import { signIn, signOut, useSession } from 'next-auth/react';
-import { setTenantIdSync } from '@/lib/auth/tenant';
+import { apiClient } from '@/lib/api/client';
 import {
   type RolePermissionsMap,
   DEFAULT_ROLE_PERMISSIONS,
-  resolveAppRoles,
   fetchPermissionsFromApi,
 } from '@/lib/auth/permissions';
 
@@ -18,8 +17,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   rolePermissions: RolePermissionsMap;
-  login: () => Promise<void>;
-  register: () => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -35,100 +33,97 @@ const AUTH_DISABLED_USER: UserProfile = {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { data: session, status } = useSession();
-
-  const isLoading = !isAuthDisabled() && status === 'loading';
-
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [rolePermissions, setRolePermissions] = useState<RolePermissionsMap>(DEFAULT_ROLE_PERMISSIONS);
 
-  // Carrega permissões da API sempre que o token mudar.
-  // Caso o endpoint não exista/esteja indisponível, mantém os defaults.
+  // Restore session on mount: if a token exists in localStorage, fetch the profile.
   useEffect(() => {
-    if (isAuthDisabled() || !session?.accessToken) return;
-    fetchPermissionsFromApi(session.accessToken).then((perms) => {
+    if (isAuthDisabled()) {
+      setUser(AUTH_DISABLED_USER);
+      setIsLoading(false);
+      return;
+    }
+
+    const token =
+      typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+
+    if (!token) {
+      setIsLoading(false);
+      return;
+    }
+
+    authService
+      .getProfile()
+      .then((profile) => setUser(profile))
+      .catch(() => {
+        // Token expired or invalid — clear storage silently.
+        apiClient.removeToken();
+      })
+      .finally(() => setIsLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Reload role permissions whenever the user changes.
+  useEffect(() => {
+    if (isAuthDisabled() || !user) return;
+    const token =
+      typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+    if (!token) return;
+    fetchPermissionsFromApi(token).then((perms) => {
       if (perms) setRolePermissions(perms);
     });
-  }, [session?.accessToken]);
+  }, [user]);
 
-  const user = useMemo<UserProfile | null>(() => {
-    if (isAuthDisabled()) return AUTH_DISABLED_USER;
-    if (status !== 'authenticated') return null;
+  const login = async (email: string, password: string) => {
+    if (isAuthDisabled()) {
+      router.push('/dashboard');
+      return;
+    }
 
-    const rawRoles = session?.roles ?? [];
-    const roles = resolveAppRoles(rawRoles);
-    const role = roles.includes('admin') ? 'admin' : roles[0] ?? 'user';
+    // authService.login stores the token in localStorage automatically.
+    const data = await authService.login({ email, password });
 
-    return {
-      id: session?.user?.id ?? session?.user?.email ?? 'user',
-      email: session?.user?.email ?? '',
-      name: session?.user?.name ?? session?.user?.email ?? 'Usuário',
-      role,
-      tenant_id: session?.tenant_id,
-      roles,
+    const profile: UserProfile = {
+      id: data.user.id,
+      email: data.user.email,
+      name: data.user.name,
+      role: data.user.role,
+      tenant_id: data.user.tenant_id,
     };
-  }, [session, status]);
 
-  useEffect(() => {
-    if (isAuthDisabled()) {
-      setTenantIdSync('auth-disabled');
-      return;
-    }
-    setTenantIdSync(session?.tenant_id ?? null);
-  }, [session?.tenant_id]);
-
-  const refreshUser = async () => {
-    // With NextAuth, session is the source of truth.
-    return;
+    setUser(profile);
+    router.push('/dashboard');
   };
 
-  const login = async () => {
-    if (isAuthDisabled()) {
-      router.push('/dashboard');
-      return;
-    }
-    const result = await signIn('keycloak', {
-      callbackUrl: '/dashboard',
-      redirect: false,
-    });
-
-    if (!result) throw new Error('OAuthSignin');
-    if (result.error) throw new Error(result.error);
-    if (result.url) window.location.href = result.url;
-  };
-
-  const register = async () => {
-    if (isAuthDisabled()) {
-      router.push('/dashboard');
-      return;
-    }
-    // Keycloak handles registration on its own UI (if enabled).
-    const result = await signIn('keycloak', {
-      callbackUrl: '/dashboard',
-      redirect: false,
-    });
-
-    if (!result) throw new Error('OAuthSignin');
-    if (result.error) throw new Error(result.error);
-    if (result.url) window.location.href = result.url;
-  };
-
-  const logout = async () => {
+  const logout = useCallback(async () => {
     if (isAuthDisabled()) {
       router.push('/auth/login');
       return;
     }
-    await signOut({ callbackUrl: '/auth/login' });
+    authService.logout(); // clears localStorage tokens
+    setUser(null);
+    router.push('/auth/login');
+  }, [router]);
+
+  const refreshUser = async () => {
+    if (isAuthDisabled()) return;
+    try {
+      const profile = await authService.getProfile();
+      setUser(profile);
+    } catch {
+      // ignore
+    }
   };
 
   return (
     <AuthContext.Provider
       value={{
-        user,
+        user: isAuthDisabled() ? AUTH_DISABLED_USER : user,
         isLoading,
-        isAuthenticated: isAuthDisabled() || status === 'authenticated',
+        isAuthenticated: isAuthDisabled() || user !== null,
         rolePermissions,
         login,
-        register,
         logout,
         refreshUser,
       }}
