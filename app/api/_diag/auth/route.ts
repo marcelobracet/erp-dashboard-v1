@@ -1,23 +1,6 @@
 import { NextResponse } from 'next/server';
-import fs from 'node:fs';
 
 export const runtime = 'nodejs';
-
-function isDockerRuntime(): boolean {
-  try {
-    return fs.existsSync('/.dockerenv');
-  } catch {
-    return false;
-  }
-}
-
-function getEffectiveKeycloakIssuer(): string {
-  const issuer = process.env.KEYCLOAK_ISSUER;
-  const issuerInternal = process.env.KEYCLOAK_ISSUER_INTERNAL;
-  return isDockerRuntime()
-    ? (issuerInternal && issuerInternal.trim()) || (issuer && issuer.trim()) || ''
-    : (issuer && issuer.trim()) || (issuerInternal && issuerInternal.trim()) || '';
-}
 
 function redactUrl(input: string): string {
   try {
@@ -32,11 +15,7 @@ function redactUrl(input: string): string {
 
 export async function GET(req: Request) {
   const nextAuthUrl = process.env.NEXTAUTH_URL || '';
-  const keycloakIssuer =
-    (process.env.KEYCLOAK_ISSUER_INTERNAL && process.env.KEYCLOAK_ISSUER_INTERNAL.trim()) ||
-    (process.env.KEYCLOAK_ISSUER && process.env.KEYCLOAK_ISSUER.trim()) ||
-    '';
-  const effectiveIssuer = getEffectiveKeycloakIssuer();
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
   const origin = (() => {
     try {
       return new URL(req.url).origin;
@@ -45,33 +24,6 @@ export async function GET(req: Request) {
     }
   })();
 
-  const effectiveBaseUrl = nextAuthUrl || origin;
-  const callbackUrl = effectiveBaseUrl
-    ? `${effectiveBaseUrl.replace(/\/$/, '')}/api/auth/callback/keycloak`
-    : null;
-
-  const wellKnownUrl = effectiveIssuer
-    ? `${effectiveIssuer.replace(/\/$/, '')}/.well-known/openid-configuration`
-    : null;
-
-  let wellKnown: {
-    ok: boolean;
-    status?: number;
-    error?: string;
-  } | null = null;
-
-  if (wellKnownUrl) {
-    try {
-      const res = await fetch(wellKnownUrl, { cache: 'no-store' });
-      wellKnown = { ok: res.ok, status: res.status };
-    } catch (e) {
-      wellKnown = {
-        ok: false,
-        error: e instanceof Error ? e.message : String(e),
-      };
-    }
-  }
-
   return NextResponse.json(
     {
       nodeEnv: process.env.NODE_ENV,
@@ -79,19 +31,16 @@ export async function GET(req: Request) {
       nextAuthUrl: nextAuthUrl ? redactUrl(nextAuthUrl) : null,
       hasNextAuthSecret: !!process.env.NEXTAUTH_SECRET,
 
-      keycloak: {
-        hasIssuer: !!keycloakIssuer,
-        issuer: keycloakIssuer ? redactUrl(keycloakIssuer) : null,
-        effectiveIssuer: effectiveIssuer ? redactUrl(effectiveIssuer) : null,
-        dockerRuntime: isDockerRuntime(),
-        hasClientId: !!process.env.KEYCLOAK_CLIENT_ID,
-        hasClientSecret: !!process.env.KEYCLOAK_CLIENT_SECRET,
+      api: {
+        url: apiUrl ? redactUrl(apiUrl) : null,
+        loginEndpoint: apiUrl ? `${apiUrl.replace(/\/$/, '')}/api/v1/auth/login` : null,
+        profileEndpoint: apiUrl ? `${apiUrl.replace(/\/$/, '')}/api/v1/users/profile` : null,
       },
 
-      computed: {
-        callbackUrl,
-        wellKnownUrl: wellKnownUrl ? redactUrl(wellKnownUrl) : null,
-        wellKnown,
+      featureFlags: {
+        authDisabled: process.env.NEXT_PUBLIC_AUTH_DISABLED ?? null,
+        productsLocal: process.env.NEXT_PUBLIC_PRODUCTS_LOCAL ?? null,
+        quotesLocal: process.env.NEXT_PUBLIC_QUOTES_LOCAL ?? null,
       },
     },
     { status: 200 }

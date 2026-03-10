@@ -30,10 +30,6 @@ const SYSTEM_ROLE_PREFIXES = ['default-roles-'];
 const SYSTEM_ROLES = new Set([
   'offline_access',
   'uma_authorization',
-  // Keycloak account console roles
-  'manage-account',
-  'manage-account-links',
-  'view-profile',
 ]);
 
 const ROLE_ALIASES: Record<string, string> = {
@@ -62,7 +58,7 @@ function isSystemRole(normalized: string): boolean {
 }
 
 /**
- * Recebe roles vindas do Keycloak (realm/client roles) e:
+ * Recebe roles vindas do token (JWT) e:
  * - remove roles de sistema (offline_access, default-roles-*, etc.)
  * - normaliza nomes e aplica aliases (ex: administrator -> admin)
  * - remove duplicados

@@ -2,6 +2,26 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
+## Environment variables
+
+- Local development uses `.env.local` (ignored by git).
+- Production uses the template `.env.production.example` (fill values on your VPS or in Vercel settings).
+
+Required:
+
+- `NEXT_PUBLIC_API_URL` (public; used by browser to reach the API)
+
+If you use NextAuth endpoints (`/api/auth/*`):
+
+- `NEXTAUTH_URL`
+- `NEXTAUTH_SECRET`
+
+Optional feature flags (public):
+
+- `NEXT_PUBLIC_AUTH_DISABLED`
+- `NEXT_PUBLIC_PRODUCTS_LOCAL`
+- `NEXT_PUBLIC_QUOTES_LOCAL`
+
 First, run the development server:
 
 ```bash

@@ -177,19 +177,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           {/* User Info */}
           <div className="p-4 border-t border-glass-10">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent to-accent-detail flex items-center justify-center text-zinc-950 font-semibold">
+            <Link
+              href="/dashboard/profile"
+              className="flex items-center gap-3 mb-3 rounded-lg px-1 py-1 hover:bg-glass-10 transition-colors group"
+            >
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent to-accent-detail flex items-center justify-center text-zinc-950 font-semibold shrink-0">
                 {user?.name?.charAt(0).toUpperCase() || 'U'}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">
+                <p className="text-sm font-medium text-foreground truncate group-hover:text-accent-muted transition-colors">
                   {user?.name || 'Usuário'}
                 </p>
                 <p className="text-xs text-text-60 truncate capitalize">
-                  {user?.role || 'user'}
+                  {user?.role === 'admin' ? 'Administrador' : user?.role === 'manager' ? 'Gerente' : user?.role === 'employee' ? 'Funcionário' : user?.role || 'user'}
                 </p>
               </div>
-            </div>
+              <svg className="w-4 h-4 text-text-40 group-hover:text-accent-muted transition-colors shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
               <button
                 onClick={() => {
                   void logout();

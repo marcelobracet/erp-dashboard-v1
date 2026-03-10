@@ -1,15 +1,11 @@
 services:
   app:
-    # Dev: use the plain node image — no need to build the production Dockerfile.
-    # Source is live-mounted via volumes; only the node binary is from the image.
     image: node:22-alpine
     working_dir: /app
     ports:
       - 3000:3000
     env_file:
-      - .env.docker
-    extra_hosts:
-      - "keycloak.localhost:host-gateway"
+      - .env.local
     networks:
       - erp-network
     volumes:
