@@ -116,7 +116,7 @@ class ApiClient {
 
   // ── Convenience wrappers ─────────────────────────────────────────────
 
-  async get<T>(endpoint: string): Promise<T> {
+  async get<T>(endpoint: string, p0?: { headers: { Accept: string; }; }): Promise<T> {
     const { data } = await this.axios.get<T>(endpoint);
     return data;
   }
