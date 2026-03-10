@@ -94,6 +94,7 @@ function ProfileContent() {
               </div>
             </div>
 
+            {/* Details */}
             <div className="app-card p-6">
               <h3 className="text-sm font-semibold text-text-60 uppercase tracking-wider mb-2">
                 Detalhes da conta
