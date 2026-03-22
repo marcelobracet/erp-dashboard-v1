@@ -1,6 +1,7 @@
 services:
   app:
     image: node:22-alpine
+    container_name: erp-dashboard
     working_dir: /app
     ports:
       - 3000:3000

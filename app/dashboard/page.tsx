@@ -1,20 +1,72 @@
 "use client";
 
+import React, { useEffect, useMemo, useState } from "react";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { LineChart } from "@/components/dashboard/LineChart";
 import { BarChart } from "@/components/dashboard/BarChart";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { getMockDashboardData } from "@/lib/mock/dashboard";
-import { getDashboardMetrics } from "@/lib/mock/dashboardMetrics";
+import { getDashboardMetrics, type DashboardMetrics } from "@/lib/mock/dashboardMetrics";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
 
 function DashboardContent() {
   const { user } = useAuth();
 
-  const mock = getMockDashboardData();
-  const metrics = getDashboardMetrics(mock);
+  const [loading, setLoading] = useState(true);
+  const [metricsState, setMetricsState] = useState<DashboardMetrics | null>(null);
+
+  const emptyMetrics = useMemo<DashboardMetrics>(
+    () => ({
+      kpis: {
+        quotesThisMonth: 0,
+        quotesLastMonth: 0,
+        quotesMoMChangePct: null,
+        conversionRate: 0,
+        conversionRateLastMonth: 0,
+        conversionRateDeltaPp: null,
+        estimatedRevenue: 0,
+        estimatedRevenueLastMonth: 0,
+        estimatedRevenueMoMChangePct: null,
+        avgTicket: 0,
+        avgTicketLastMonth: 0,
+        avgTicketMoMChangePct: null,
+        newClientsThisMonth: 0,
+      },
+      series: {
+        quotesLast30Days: [],
+        approvedVsRejectedLast6Months: [],
+      },
+      lists: {
+        topClientsThisMonth: [],
+        newClientsThisMonth: [],
+      },
+    }),
+    []
+  );
+
+  const metrics = metricsState ?? emptyMetrics;
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        setLoading(true);
+        // Today it's mock; tomorrow it can be an API call.
+        const mock = await Promise.resolve(getMockDashboardData());
+        const next = getDashboardMetrics(mock);
+        if (!mounted) return;
+        setMetricsState(next);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const momLabel = (pct: number | null) => {
     if (pct === null) return "Sem base";
@@ -50,6 +102,7 @@ function DashboardContent() {
             value={String(metrics.kpis.quotesThisMonth)}
             subtitle={`Mês anterior: ${metrics.kpis.quotesLastMonth}`}
             trendLabel={momLabel(metrics.kpis.quotesMoMChangePct)}
+            loading={loading}
             trendVariant={
               metrics.kpis.quotesMoMChangePct === null
                 ? "neutral"
@@ -71,6 +124,7 @@ function DashboardContent() {
             value={pct(metrics.kpis.conversionRate)}
             subtitle="Aprovados / (sem rascunhos)"
             trendLabel={ppLabel(metrics.kpis.conversionRateDeltaPp)}
+            loading={loading}
             trendVariant={
               metrics.kpis.conversionRateDeltaPp === null
                 ? "neutral"
@@ -92,6 +146,7 @@ function DashboardContent() {
             value={formatCurrency(metrics.kpis.estimatedRevenue)}
             subtitle="Somente aprovados"
             trendLabel={momLabel(metrics.kpis.estimatedRevenueMoMChangePct)}
+            loading={loading}
             trendVariant={
               metrics.kpis.estimatedRevenueMoMChangePct === null
                 ? "neutral"
@@ -113,6 +168,7 @@ function DashboardContent() {
             value={formatCurrency(metrics.kpis.avgTicket)}
             subtitle="Aprovados no mês"
             trendLabel={momLabel(metrics.kpis.avgTicketMoMChangePct)}
+            loading={loading}
             trendVariant={
               metrics.kpis.avgTicketMoMChangePct === null
                 ? "neutral"
@@ -139,7 +195,7 @@ function DashboardContent() {
               </div>
             </div>
             <div className="mt-5">
-              <LineChart data={metrics.series.quotesLast30Days} />
+              <LineChart data={metrics.series.quotesLast30Days} loading={loading} />
             </div>
           </div>
 
@@ -151,7 +207,7 @@ function DashboardContent() {
               </div>
             </div>
             <div className="mt-5">
-              <BarChart data={metrics.series.approvedVsRejectedLast6Months} />
+              <BarChart data={metrics.series.approvedVsRejectedLast6Months} loading={loading} />
             </div>
           </div>
         </div>
@@ -173,7 +229,21 @@ function DashboardContent() {
             </div>
 
             <div className="mt-5 space-y-3">
-              {metrics.lists.newClientsThisMonth.length === 0 ? (
+              {loading ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="rounded-lg border border-glass-10 bg-glass-5 px-4 py-3"
+                    >
+                      <Skeleton variant="text" width={220} aria-label="Carregando" />
+                      <div className="mt-2">
+                        <Skeleton variant="text" width={120} aria-label="Carregando" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : metrics.lists.newClientsThisMonth.length === 0 ? (
                 <p className="text-sm text-text-80">Nenhum novo cliente registrado neste mês.</p>
               ) : (
                 metrics.lists.newClientsThisMonth.map((c) => (
@@ -206,7 +276,25 @@ function DashboardContent() {
             </div>
 
             <div className="mt-5">
-              {metrics.lists.topClientsThisMonth.length === 0 ? (
+              {loading ? (
+                <div className="space-y-3">
+                  <div className="rounded-xl border border-glass-10 bg-glass-5 px-4 py-3">
+                    <Skeleton variant="text" width="60%" aria-label="Carregando" />
+                  </div>
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="rounded-xl border border-glass-10 bg-glass-5 px-4 py-3"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <Skeleton variant="text" width="45%" aria-label="Carregando" />
+                        <Skeleton variant="text" width={44} aria-label="Carregando" />
+                        <Skeleton variant="text" width={90} aria-label="Carregando" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : metrics.lists.topClientsThisMonth.length === 0 ? (
                 <p className="text-sm text-text-80">Ainda não há orçamentos neste mês.</p>
               ) : (
                 <div className="overflow-hidden rounded-xl border border-glass-10">

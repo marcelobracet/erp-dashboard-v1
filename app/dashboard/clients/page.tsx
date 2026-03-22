@@ -48,7 +48,7 @@ function ClientsContent() {
       header: "Nome",
       render: (value: string, row: Client) => (
         <div>
-          <div className="font-medium text-gray-900 dark:text-white">
+          <div className="font-medium text-foreground dark:text-white">
             {value}
           </div>
           {row.email && (
@@ -66,6 +66,43 @@ function ClientsContent() {
     {
       key: "document" as keyof Client,
       header: "Documento",
+      render: (value: string, row: Client) => (
+        <div className="flex flex-col">
+          <span className="text-sm text-foreground">{value || '-'}</span>
+          {row.document_type && (
+            <span className="text-xs text-text-60">{row.document_type}</span>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "city" as keyof Client,
+      header: "Cidade/UF",
+      render: (_: unknown, row: Client) => {
+        const city = row.city?.trim();
+        const state = row.state?.trim();
+        if (!city && !state) return '-';
+        return `${city ?? ''}${city && state ? '/' : ''}${state ?? ''}`;
+      },
+    },
+    {
+      key: "is_active" as keyof Client,
+      header: "Status",
+      className: "text-right",
+      render: (value: boolean | undefined) => {
+        const active = value !== false;
+        return (
+          <span
+            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${
+              active
+                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                : 'bg-red-500/10 text-red-400 border-red-500/20'
+            }`}
+          >
+            {active ? 'Ativo' : 'Inativo'}
+          </span>
+        );
+      },
     },
     {
       key: "created_at" as keyof Client,
@@ -104,6 +141,7 @@ function ClientsContent() {
           </div>
           <ProtectedComponent resource="clients" action="create">
             <Button
+              variant="primary"
               onClick={() => {
                 setSelectedClient(null);
                 setIsModalOpen(true);

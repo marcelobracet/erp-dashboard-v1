@@ -128,7 +128,7 @@ function SettingsContent() {
 
   const handleSave = async () => {
     try {
-      await settingsService.update(editedSettings);
+      await settingsService.update(editedSettings, user?.tenant_id);
       setIsEditing(false);
       fetchSettings();
       writeLocalSettings(user?.tenant_id, editedSettings);
@@ -273,7 +273,7 @@ function SettingsContent() {
                       placeholder="Nome da empresa"
                     />
                   ) : (
-                    <p className="text-gray-900 dark:text-white py-2">
+                    <p className="text-foreground py-2">
                       {settings.company_name || "-"}
                     </p>
                   )}
@@ -292,7 +292,7 @@ function SettingsContent() {
                       placeholder="email@empresa.com"
                     />
                   ) : (
-                    <p className="text-gray-900 dark:text-white py-2">
+                    <p className="text-foreground py-2">
                       {settings.company_email || "-"}
                     </p>
                   )}
@@ -334,7 +334,7 @@ function SettingsContent() {
                           className="h-16 object-contain"
                         />
                       ) : (
-                        <p className="text-gray-500 dark:text-gray-400">-</p>
+                        <p className="text-text-60">-</p>
                       )}
                     </div>
                   )}
@@ -379,7 +379,7 @@ function SettingsContent() {
                       placeholder="Rua, número"
                     />
                   ) : (
-                    <p className="text-gray-900 dark:text-white py-2">
+                    <p className="text-foreground py-2">
                       {settings.company_address || "-"}
                     </p>
                   )}
@@ -397,7 +397,7 @@ function SettingsContent() {
                       placeholder="Cidade"
                     />
                   ) : (
-                    <p className="text-gray-900 dark:text-white py-2">
+                    <p className="text-foreground py-2">
                       {settings.company_city || "-"}
                     </p>
                   )}
@@ -416,7 +416,7 @@ function SettingsContent() {
                       maxLength={2}
                     />
                   ) : (
-                    <p className="text-gray-900 dark:text-white py-2">
+                    <p className="text-foreground py-2">
                       {settings.company_state || "-"}
                     </p>
                   )}
@@ -434,7 +434,7 @@ function SettingsContent() {
                       placeholder="00000-000"
                     />
                   ) : (
-                    <p className="text-gray-900 dark:text-white py-2">
+                    <p className="text-foreground py-2">
                       {settings.company_zip || "-"}
                     </p>
                   )}

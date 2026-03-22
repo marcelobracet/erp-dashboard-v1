@@ -116,36 +116,40 @@ export default function ProductForm({
       return;
     }
 
+    const sku = draft.sku.trim();
+    if (!sku) {
+      setError('Informe o SKU / código interno.');
+      return;
+    }
+
     const price = toNumberOrUndefined(draft.price);
     if (price == null) {
       setError('Informe um preço válido.');
       return;
     }
 
+    const stock = toIntOrUndefined(draft.stock) ?? 0;
+
     setIsSaving(true);
     try {
-      const image_url = imageFile ? await fileToDataUrl(imageFile) : product?.image_url;
 
+      const image_url = imageFile ? await fileToDataUrl(imageFile) : product?.image_url;
       const payload: Partial<Product> = {
         name,
-        sku: draft.sku.trim() || undefined,
         description: draft.description.trim() || undefined,
         price,
-        stock: toIntOrUndefined(draft.stock) ?? undefined,
-
+        stock,
+        sku,
         category: draft.category,
-        unit: draft.unit,
-        pricing_rule: draft.pricing_rule,
-
-        thickness_mm: toIntOrUndefined(draft.thickness_mm),
-        finish: draft.finish.trim() || undefined,
-        line: draft.line.trim() || undefined,
-
-        waste_percent: toNumberOrUndefined(draft.waste_percent),
-        minimum_charge: toNumberOrUndefined(draft.minimum_charge),
-
         image_url,
         active: draft.active,
+        unit: draft.unit,
+        pricing_rule: draft.pricing_rule,
+        thickness_mm: toNumberOrUndefined(draft.thickness_mm),
+        finish: draft.finish.trim() || undefined,
+        line: draft.line.trim() || undefined,
+        waste_percent: toNumberOrUndefined(draft.waste_percent),
+        minimum_charge: toNumberOrUndefined(draft.minimum_charge),
       };
 
       const saved = product?.id
@@ -228,9 +232,9 @@ export default function ProductForm({
           onChange={(e) => update('price', e.target.value)}
         />
         <Input
-          label="Estoque (opcional)"
+          label="Estoque"
           type="number"
-          placeholder="Ex.: 10"
+          placeholder="Ex.: 10 (0 se vazio)"
           value={draft.stock}
           onChange={(e) => update('stock', e.target.value)}
         />
@@ -273,7 +277,7 @@ export default function ProductForm({
       </div>
 
       <Input
-        label="SKU / Código interno (opcional)"
+        label="SKU / Código interno"
         placeholder="Ex.: GRA-PSG-20-POL"
         value={draft.sku}
         onChange={(e) => update('sku', e.target.value)}

@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { Skeleton } from '@/components/ui/Skeleton';
 import {
   ResponsiveContainer,
   BarChart as ReBarChart,
@@ -30,7 +31,7 @@ function ChartTooltip({
   if (!active) return null;
   const rows = (payload ?? []).filter((p) => typeof p?.value === 'number');
   return (
-    <div className="rounded-lg border border-glass-10 bg-white/95 px-3 py-2 shadow-lg">
+    <div className="rounded-lg border border-glass-10 bg-glass-15 px-3 py-2 shadow-lg">
       <div className="text-xs text-text-60">{label}</div>
       <div className="mt-1 space-y-1">
         {rows.map((r) => (
@@ -47,10 +48,34 @@ function ChartTooltip({
 export function BarChart({
   data,
   height = 180,
+  loading = false,
 }: {
   data: BarChartDatum[];
   height?: number;
+  loading?: boolean;
 }) {
+  if (loading) {
+    return (
+      <div
+        className="w-full"
+        style={{ height }}
+        aria-busy="true"
+        aria-label="Carregando gráfico"
+      >
+        <div className="h-full w-full rounded-lg border border-glass-10 bg-glass-5 p-3">
+          <div className="grid h-full grid-cols-6 items-end gap-3">
+            <Skeleton height="52%" className="w-full rounded-md" aria-label="Carregando" />
+            <Skeleton height="80%" className="w-full rounded-md" aria-label="Carregando" />
+            <Skeleton height="44%" className="w-full rounded-md" aria-label="Carregando" />
+            <Skeleton height="70%" className="w-full rounded-md" aria-label="Carregando" />
+            <Skeleton height="62%" className="w-full rounded-md" aria-label="Carregando" />
+            <Skeleton height="90%" className="w-full rounded-md" aria-label="Carregando" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full" style={{ height }} aria-label="Aprovados vs rejeitados">
       <ResponsiveContainer width="100%" height="100%">

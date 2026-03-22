@@ -18,7 +18,7 @@ export default function NewQuotePage() {
         <div className="space-y-6">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-foreground">Novo Orçamento</h1>
+              <h1 className="text-3xl dark:text-foreground font-bold">Novo Orçamento</h1>
               <p className="text-text-80 mt-1">
                 Selecione produtos cadastrados e informe as medidas para gerar a proposta.
               </p>

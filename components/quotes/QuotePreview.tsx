@@ -102,14 +102,14 @@ export default function QuotePreview({ quote }: { quote: Quote }) {
   }, []);
 
   return (
-    <div className="bg-white text-[#050a30] rounded-xl border border-glass-10 overflow-hidden">
+    <div className="bg-background text-foreground print:bg-white print:text-[#050a30] rounded-xl border border-glass-10 overflow-hidden">
       {/* Header (logo + info) */}
-      <div className="p-6 border-b border-[#e6eaf7]">
+      <div className="p-6 border-b border-glass-10 print:border-[#e6eaf7]">
         <div className="flex items-start justify-between gap-6">
           <div>
             <div className="text-xs uppercase tracking-wider text-[#8c756a]">Orçamento</div>
             <div className="text-2xl font-bold mt-1">#{quote.id.slice(0, 8).toUpperCase()}</div>
-            <div className="text-sm text-[#050a30]/70 mt-1">Data: {created}</div>
+            <div className="text-sm text-text-60 print:text-[#050a30]/70 mt-1">Data: {created}</div>
           </div>
 
           <div className="flex flex-col items-end gap-2">
@@ -135,38 +135,38 @@ export default function QuotePreview({ quote }: { quote: Quote }) {
 
             <div className="text-right">
               <div className="text-sm font-semibold">{companyName || 'Empresa'}</div>
-              <div className="text-xs text-[#050a30]/70">Proposta de fornecimento e instalação</div>
+              <div className="text-xs text-text-60 print:text-[#050a30]/70">Proposta de fornecimento e instalação</div>
             </div>
           </div>
         </div>
 
         <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="rounded-lg border border-[#e6eaf7] p-4">
+          <div className="rounded-lg border border-glass-10 print:border-[#e6eaf7] p-4">
             <div className="text-xs uppercase tracking-wider text-[#8c756a]">Cliente</div>
             <div className="mt-1 font-semibold">{clientName}</div>
             {quote.client_snapshot?.phone && (
-              <div className="text-sm text-[#050a30]/70">Telefone: {quote.client_snapshot.phone}</div>
+              <div className="text-sm text-text-60 print:text-[#050a30]/70">Telefone: {quote.client_snapshot.phone}</div>
             )}
             {quote.client_snapshot?.email && (
-              <div className="text-sm text-[#050a30]/70">Email: {quote.client_snapshot.email}</div>
+              <div className="text-sm text-text-60 print:text-[#050a30]/70">Email: {quote.client_snapshot.email}</div>
             )}
             {quote.client_snapshot?.address && (
-              <div className="text-sm text-[#050a30]/70">Endereço: {quote.client_snapshot.address}</div>
+              <div className="text-sm text-text-60 print:text-[#050a30]/70">Endereço: {quote.client_snapshot.address}</div>
             )}
           </div>
 
-          <div className="rounded-lg border border-[#e6eaf7] p-4">
+          <div className="rounded-lg border border-glass-10 print:border-[#e6eaf7] p-4">
             <div className="text-xs uppercase tracking-wider text-[#8c756a]">Resumo</div>
             <div className="mt-2 flex items-center justify-between text-sm">
-              <span className="text-[#050a30]/70">Status</span>
+              <span className="text-text-60 print:text-[#050a30]/70">Status</span>
               <span className="font-medium capitalize">{quote.status}</span>
             </div>
             <div className="mt-1 flex items-center justify-between text-sm">
-              <span className="text-[#050a30]/70">Itens</span>
+              <span className="text-text-60 print:text-[#050a30]/70">Itens</span>
               <span className="font-medium">{items.length}</span>
             </div>
-            <div className="mt-3 pt-3 border-t border-[#e6eaf7] flex items-center justify-between">
-              <span className="text-sm text-[#050a30]/70">Total</span>
+            <div className="mt-3 pt-3 border-t border-glass-10 print:border-[#e6eaf7] flex items-center justify-between">
+              <span className="text-sm text-text-60 print:text-[#050a30]/70">Total</span>
               <span className="text-xl font-bold text-[#16a34a]">{formatCurrency(quote.total ?? 0)}</span>
             </div>
           </div>
@@ -176,15 +176,15 @@ export default function QuotePreview({ quote }: { quote: Quote }) {
       <div className="p-6">
         <div className="space-y-6">
           {envSections.map((env) => (
-            <div key={env.id} className="rounded-xl border border-[#e6eaf7] overflow-hidden">
-              <div className="px-4 py-2 bg-[#f4f6fc] border-b border-[#e6eaf7]">
+            <div key={env.id} className="rounded-xl border border-glass-10 print:border-[#e6eaf7] overflow-hidden">
+              <div className="px-4 py-2 bg-glass-5 print:bg-[#f4f6fc] border-b border-glass-10 print:border-[#e6eaf7]">
                 <div className="text-sm font-semibold uppercase tracking-wide">{env.name}</div>
               </div>
 
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm">
                   <thead>
-                    <tr className="text-left text-xs uppercase tracking-wider text-[#8c756a] border-b border-[#e6eaf7]">
+                    <tr className="text-left text-xs uppercase tracking-wider text-[#8c756a] border-b border-glass-10 print:border-[#e6eaf7]">
                       <th className="py-3 px-4">Item</th>
                       <th className="py-3 px-4">Medidas</th>
                       <th className="py-3 px-4 text-right">Qtde</th>
@@ -193,21 +193,21 @@ export default function QuotePreview({ quote }: { quote: Quote }) {
                       <th className="py-3 px-4 text-right">Total</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#e6eaf7]">
+                  <tbody className="divide-y divide-glass-10 print:divide-[#e6eaf7]">
                     {env.items.map((it) => (
                       <tr key={it.id}>
                         <td className="py-3 px-4 align-top">
                           <div className="font-medium">{it.product?.name ?? it.description ?? 'Item'}</div>
                           {it.description && (
-                            <div className="text-xs text-[#050a30]/65 mt-1">{it.description}</div>
+                            <div className="text-xs text-text-60 print:text-[#050a30]/65 mt-1">{it.description}</div>
                           )}
                           {it.note && <div className="text-xs mt-1 text-red-600">{it.note}</div>}
                         </td>
-                        <td className="py-3 px-4 text-[#050a30]/75 align-top">{itemDims(it)}</td>
+                        <td className="py-3 px-4 text-text-60 print:text-[#050a30]/75 align-top">{itemDims(it)}</td>
                         <td className="py-3 px-4 text-right align-top">
                           {fmtNum(it.charged_quantity ?? it.quantity, 2)}
                         </td>
-                        <td className="py-3 px-4 text-[#050a30]/75 align-top">{it.unit ?? it.product?.unit ?? '-'}</td>
+                        <td className="py-3 px-4 text-text-60 print:text-[#050a30]/75 align-top">{it.unit ?? it.product?.unit ?? '-'}</td>
                         <td className="py-3 px-4 text-right align-top">{formatCurrency(it.price ?? 0)}</td>
                         <td className="py-3 px-4 text-right font-semibold align-top">{formatCurrency(it.subtotal ?? 0)}</td>
                       </tr>
@@ -216,7 +216,7 @@ export default function QuotePreview({ quote }: { quote: Quote }) {
                 </table>
               </div>
 
-              <div className="flex items-center justify-end gap-3 px-4 py-3 border-t border-[#e6eaf7] bg-white">
+              <div className="flex items-center justify-end gap-3 px-4 py-3 border-t border-glass-10 print:border-[#e6eaf7] bg-glass-5 print:bg-white">
                 <span className="text-xs uppercase tracking-wider text-[#8c756a]">Subtotal</span>
                 <span className="text-sm font-semibold">{formatCurrency(env.subtotal)}</span>
               </div>
@@ -225,22 +225,22 @@ export default function QuotePreview({ quote }: { quote: Quote }) {
         </div>
 
         {quote.notes && (
-          <div className="mt-6 rounded-lg border border-[#e6eaf7] p-4">
+          <div className="mt-6 rounded-lg border border-glass-10 print:border-[#e6eaf7] p-4">
             <div className="text-xs uppercase tracking-wider text-[#8c756a]">Observações</div>
-            <div className="mt-2 text-sm text-[#050a30]/80 whitespace-pre-wrap">{quote.notes}</div>
+            <div className="mt-2 text-sm text-text-80 print:text-[#050a30]/80 whitespace-pre-wrap">{quote.notes}</div>
           </div>
         )}
 
         <div className="mt-6 flex items-center justify-end">
           <div className="w-full max-w-sm rounded-lg border border-[#e6eaf7] p-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-[#050a30]/70">Total</span>
+              <span className="text-sm text-text-60 print:text-[#050a30]/70">Total</span>
               <span className="text-2xl font-extrabold text-[#16a34a]">{formatCurrency(quote.total ?? 0)}</span>
             </div>
           </div>
         </div>
 
-        <div className="mt-8 text-xs text-[#050a30]/60">
+        <div className="mt-8 text-xs text-text-60 print:text-[#050a30]/60">
           Valores sujeitos à confirmação de medidas em obra. Prazo e condições a combinar.
         </div>
       </div>

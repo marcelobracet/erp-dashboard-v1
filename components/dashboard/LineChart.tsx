@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { Skeleton } from '@/components/ui/Skeleton';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -28,7 +29,7 @@ function ChartTooltip({
   if (!active) return null;
   const val = payload?.[0]?.value ?? 0;
   return (
-    <div className="rounded-lg border border-glass-10 bg-white/95 px-3 py-2 shadow-lg">
+    <div className="rounded-lg border border-glass-10 bg-glass-15 px-3 py-2 shadow-lg">
       <div className="text-xs text-text-60">{label}</div>
       <div className="text-sm font-semibold text-foreground">{val}</div>
     </div>
@@ -38,10 +39,27 @@ function ChartTooltip({
 export function LineChart({
   data,
   height = 160,
+  loading = false,
 }: {
   data: LineChartPoint[];
   height?: number;
+  loading?: boolean;
 }) {
+  if (loading) {
+    return (
+      <div
+        className="w-full"
+        style={{ height }}
+        aria-busy="true"
+        aria-label="Carregando gráfico"
+      >
+        <div className="h-full w-full rounded-lg border border-glass-10 bg-glass-5 p-3">
+          <Skeleton variant="rounded" className="h-full w-full" aria-label="Carregando" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full" style={{ height }} aria-label="Orçamentos ao longo do tempo">
       <ResponsiveContainer width="100%" height="100%">

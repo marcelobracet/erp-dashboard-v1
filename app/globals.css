@@ -50,6 +50,40 @@
   --accent-15: rgba(35, 61, 255, 0.15); /* blue/15 */
   --accent-20: rgba(35, 61, 255, 0.2); /* blue/20 */
   --accent-90: rgba(2, 146, 183, 0.9); /* teal/90 */
+
+  /* Skeleton shimmer */
+  --skeleton-base: rgba(5, 10, 48, 0.08);
+  --skeleton-highlight: rgba(255, 255, 255, 0.55);
+}
+
+[data-theme='dark'] {
+  --background: #050a30; /* navy */
+  --foreground: #f4f6fc; /* ice */
+
+  --overlay-90: rgba(0, 0, 0, 0.85);
+  --overlay-40: rgba(0, 0, 0, 0.55);
+
+  --text-80: rgba(244, 246, 252, 0.86);
+  --text-60: rgba(244, 246, 252, 0.64);
+
+  /* Glass surfaces / borders */
+  --glass-5: rgba(255, 255, 255, 0.06);
+  --glass-10: rgba(255, 255, 255, 0.10);
+  --glass-15: rgba(255, 255, 255, 0.14);
+
+  /* Keep brand; adjust semantic accent slightly for dark readability */
+  --accent: var(--brand-sky);
+  --accent-hover: var(--brand-cyan);
+  --accent-detail: var(--brand-sky);
+  --accent-muted: var(--brand-cyan);
+  --accent-soft: rgba(153, 223, 236, 0.18);
+
+  --accent-15: rgba(153, 223, 236, 0.16);
+  --accent-20: rgba(153, 223, 236, 0.22);
+  --accent-90: rgba(26, 200, 219, 0.9);
+
+  --skeleton-base: rgba(244, 246, 252, 0.10);
+  --skeleton-highlight: rgba(255, 255, 255, 0.14);
 }
 
 @theme inline {
@@ -94,7 +128,11 @@
 }
 
 html {
-  color-scheme: light;
+  color-scheme: light dark;
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
 }
 
 @media print {
@@ -130,6 +168,39 @@ body {
 
   .app-overlay-40 {
     @apply bg-overlay-40;
+  }
+
+  .skeleton {
+    background-color: var(--skeleton-base);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background-image: linear-gradient(
+      90deg,
+      transparent,
+      var(--skeleton-highlight),
+      transparent
+    );
+    animation: skeleton-shimmer 1.4s ease-in-out infinite;
+  }
+}
+
+@keyframes skeleton-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after {
+    animation: none;
+    opacity: 0;
   }
 }
 

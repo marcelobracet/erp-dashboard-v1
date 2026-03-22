@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Image from 'next/image';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Table } from '@/components/ui/Table';
@@ -50,7 +49,8 @@ function ProductsContent() {
       render: (value: string, row: Product) => (
         <div className="flex items-center gap-3">
           {row.image_url ? (
-            <Image
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
               src={row.image_url}
               alt={row.name}
               width={40}

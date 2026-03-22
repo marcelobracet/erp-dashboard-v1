@@ -1,6 +1,7 @@
 import axios, {
   type AxiosInstance,
   type AxiosError,
+  type AxiosRequestConfig,
   type InternalAxiosRequestConfig,
 } from 'axios';
 import { API_CONFIG, API_TIMEOUT } from './config';
@@ -106,18 +107,25 @@ class ApiClient {
     const data = error.response?.data as
       | Record<string, unknown>
       | undefined;
-    const message =
+    const details =
+      typeof data?.details === 'string'
+        ? data.details
+        : data?.details != null
+          ? JSON.stringify(data.details)
+          : undefined;
+    const base =
       (data?.message as string | undefined) ??
       (data?.error as string | undefined) ??
       error.message ??
       'Ocorreu um erro';
+    const message = details ? `${base}: ${details}` : base;
     return { message, status: error.response?.status };
   }
 
   // ── Convenience wrappers ─────────────────────────────────────────────
 
-  async get<T>(endpoint: string, p0?: { headers: { Accept: string; }; }): Promise<T> {
-    const { data } = await this.axios.get<T>(endpoint);
+  async get<T>(endpoint: string, config?: AxiosRequestConfig): Promise<T> {
+    const { data } = await this.axios.get<T>(endpoint, config);
     return data;
   }
 

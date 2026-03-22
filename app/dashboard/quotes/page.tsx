@@ -110,7 +110,7 @@ function QuotesContent() {
             <p className="text-text-80 mt-1">Gerencie seus orçamentos e propostas</p>
           </div>
           <ProtectedComponent resource="quotes" action="create">
-            <Button onClick={() => router.push('/dashboard/quotes/new')}>Novo Orçamento</Button>
+            <Button className='dark:text-black' onClick={() => router.push('/dashboard/quotes/new')}>Novo Orçamento</Button>
           </ProtectedComponent>
         </div>
 
