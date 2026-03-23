@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Image from "next/image";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import Button from "@/components/ui/Button";
@@ -28,13 +29,19 @@ function readLocalSettings(tenantId?: string): TenantSettings | null {
   }
 }
 
-function writeLocalSettings(tenantId: string | undefined, settings: Record<string, string>) {
+function writeLocalSettings(
+  tenantId: string | undefined,
+  settings: Record<string, string>,
+) {
   try {
     const payload: TenantSettings = {
       tenant_id: tenantId ?? "default",
       settings,
     } as TenantSettings;
-    window.localStorage.setItem(localSettingsKey(tenantId), JSON.stringify(payload));
+    window.localStorage.setItem(
+      localSettingsKey(tenantId),
+      JSON.stringify(payload),
+    );
 
     // Convenience keys (used by QuotePreview fallback)
     if (typeof settings.company_name === "string") {
@@ -63,12 +70,12 @@ const settingsLabels: Record<string, string> = {
 
 function SettingsContent() {
   const [tenantSettings, setTenantSettings] = useState<TenantSettings | null>(
-    null
+    null,
   );
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editedSettings, setEditedSettings] = useState<Record<string, string>>(
-    {}
+    {},
   );
   const { hasPermission } = usePermissions();
   const { user } = useAuth();
@@ -95,7 +102,10 @@ function SettingsContent() {
         setTenantSettings(settingsData);
         if (settingsData.settings) {
           setEditedSettings(settingsData.settings as Record<string, string>);
-          writeLocalSettings(user?.tenant_id, settingsData.settings as Record<string, string>);
+          writeLocalSettings(
+            user?.tenant_id,
+            settingsData.settings as Record<string, string>,
+          );
         }
       } else {
         console.warn("❌ Unexpected API response format:", data);
@@ -136,7 +146,10 @@ function SettingsContent() {
     } catch (error) {
       console.error("Failed to save settings:", error);
       writeLocalSettings(user?.tenant_id, editedSettings);
-      setTenantSettings({ tenant_id: user?.tenant_id ?? "default", settings: editedSettings } as TenantSettings);
+      setTenantSettings({
+        tenant_id: user?.tenant_id ?? "default",
+        settings: editedSettings,
+      } as TenantSettings);
       setIsEditing(false);
       alert("Configurações salvas localmente (sem API)");
     }
@@ -174,7 +187,7 @@ function SettingsContent() {
   console.log("🎨 Render - loading:", loading);
   console.log(
     "🎨 Render - Should show empty?",
-    !tenantSettings || !tenantSettings.settings
+    !tenantSettings || !tenantSettings.settings,
   );
 
   return (
@@ -279,7 +292,7 @@ function SettingsContent() {
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-foreground mb-2">
                     {settingsLabels.company_email}
                   </label>
                   {isEditing ? (
@@ -298,7 +311,7 @@ function SettingsContent() {
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-foreground mb-2">
                     {settingsLabels.company_phone}
                   </label>
                   {isEditing ? (
@@ -310,13 +323,13 @@ function SettingsContent() {
                       placeholder="(11) 99999-9999"
                     />
                   ) : (
-                    <p className="text-gray-900 dark:text-white py-2">
+                    <p className="text-foreground py-2">
                       {settings.company_phone || "-"}
                     </p>
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-foreground mb-2">
                     {settingsLabels.logo_url}
                   </label>
                   {isEditing ? (
@@ -328,7 +341,9 @@ function SettingsContent() {
                   ) : (
                     <div className="py-2">
                       {settings.logo_url ? (
-                        <img
+                        <Image
+                          width={100}
+                          height={100}
                           src={settings.logo_url}
                           alt="Logo"
                           className="h-16 object-contain"
@@ -441,7 +456,7 @@ function SettingsContent() {
                 </div>
               </div>
             </div>
-            </div>
+          </div>
         )}
       </div>
     </DashboardLayout>

@@ -32,6 +32,8 @@ export const API_CONFIG = {
       list: "/api/v1/quotes",
       count: "/api/v1/quotes/count",
       byId: (id: string) => `/api/v1/quotes/${id}`,
+      itemsByQuoteId: (id: string) => `/api/v1/quotes/${id}/items`,
+      lineItemsByQuoteId: (id: string) => `/api/v1/quotes/${id}/line-items`,
       updateStatus: (id: string) => `/api/v1/quotes/${id}/status`,
     },
     settings: {

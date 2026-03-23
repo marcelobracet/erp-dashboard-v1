@@ -40,10 +40,22 @@ export default function QuotePreview({ quote }: { quote: Quote }) {
     const byId = new Map<string, QuoteItem>();
     for (const it of items) byId.set(it.id, it);
 
+    function itemsForEnv(env: { id: string; name: string; item_ids: string[] }): QuoteItem[] {
+      const byExplicitId = env.item_ids.map((id) => byId.get(id)).filter(Boolean) as QuoteItem[];
+      if (byExplicitId.length > 0) return byExplicitId;
+
+      const nameNorm = env.name.trim().toLowerCase();
+      return items.filter((it) => {
+        if (it.environment_id && it.environment_id === env.id) return true;
+        if (it.environment_name?.trim().toLowerCase() === nameNorm) return true;
+        return false;
+      });
+    }
+
     // Prefer explicit environments ordering
     if (quote.environments && quote.environments.length > 0) {
       return quote.environments.map((env) => {
-        const envItems = env.item_ids.map((id) => byId.get(id)).filter(Boolean) as QuoteItem[];
+        const envItems = itemsForEnv(env);
         const subtotal = envItems.reduce((acc, it) => acc + Number(it.subtotal ?? 0), 0);
         return { id: env.id, name: env.name, items: envItems, subtotal };
       });

@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/contexts/AuthContext';
 import { isAuthDisabled } from '@/lib/featureFlags';
-import type { Permission } from '@/lib/auth/permissions';
+import { resolveAppRoles, type Permission } from '@/lib/auth/permissions';
 
 export type UserRole = 'admin' | 'user' | string;
 export type { Permission };
@@ -12,7 +12,9 @@ export function usePermissions() {
 
   const effectiveRoles = (): string[] => {
     if (isAuthDisabled()) return ['admin'];
-    return user?.roles?.length ? user.roles : user?.role ? [user.role] : [];
+    const raw =
+      user?.roles?.length ? [...user.roles] : user?.role ? [user.role] : [];
+    return resolveAppRoles(raw);
   };
 
   /**
@@ -31,6 +33,10 @@ export function usePermissions() {
     return actions.some((action) => hasPermission(resource, action));
   };
 
+  /** Alterar status do orçamento: ação explícita ou permissão genérica de update. */
+  const canChangeQuoteStatus = (): boolean =>
+    hasAnyPermission('quotes', ['update_status', 'update']);
+
   const hasRole = (roles: UserRole | UserRole[]): boolean => {
     if (isAuthDisabled()) return true;
     const rolesArray = Array.isArray(roles) ? roles : [roles];
@@ -45,6 +51,7 @@ export function usePermissions() {
   return {
     hasPermission,
     hasAnyPermission,
+    canChangeQuoteStatus,
     hasRole,
     canAccess,
     /** Role principal do usuário (primeira da lista resolvida). */

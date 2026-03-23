@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,57 +8,63 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { LineChart } from "@/components/dashboard/LineChart";
 import { BarChart } from "@/components/dashboard/BarChart";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { getMockDashboardData } from "@/lib/mock/dashboard";
-import { getDashboardMetrics, type DashboardMetrics } from "@/lib/mock/dashboardMetrics";
+import { getDashboardMetricsFromApi } from "@/lib/dashboard/fromApi";
+import { clientService, quoteService } from "@/lib/api/services";
+import type { DashboardMetrics } from "@/lib/mock/dashboardMetrics";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
+
+const EMPTY_DASHBOARD_METRICS: DashboardMetrics = {
+  kpis: {
+    quotesThisMonth: 0,
+    quotesLastMonth: 0,
+    quotesMoMChangePct: null,
+    conversionRate: 0,
+    conversionRateLastMonth: 0,
+    conversionRateDeltaPp: null,
+    estimatedRevenue: 0,
+    estimatedRevenueLastMonth: 0,
+    estimatedRevenueMoMChangePct: null,
+    avgTicket: 0,
+    avgTicketLastMonth: 0,
+    avgTicketMoMChangePct: null,
+    newClientsThisMonth: 0,
+  },
+  series: {
+    quotesLast30Days: [],
+    approvedVsRejectedLast6Months: [],
+  },
+  lists: {
+    topClientsThisMonth: [],
+    newClientsThisMonth: [],
+  },
+};
 
 function DashboardContent() {
   const { user } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [metricsState, setMetricsState] = useState<DashboardMetrics | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const emptyMetrics = useMemo<DashboardMetrics>(
-    () => ({
-      kpis: {
-        quotesThisMonth: 0,
-        quotesLastMonth: 0,
-        quotesMoMChangePct: null,
-        conversionRate: 0,
-        conversionRateLastMonth: 0,
-        conversionRateDeltaPp: null,
-        estimatedRevenue: 0,
-        estimatedRevenueLastMonth: 0,
-        estimatedRevenueMoMChangePct: null,
-        avgTicket: 0,
-        avgTicketLastMonth: 0,
-        avgTicketMoMChangePct: null,
-        newClientsThisMonth: 0,
-      },
-      series: {
-        quotesLast30Days: [],
-        approvedVsRejectedLast6Months: [],
-      },
-      lists: {
-        topClientsThisMonth: [],
-        newClientsThisMonth: [],
-      },
-    }),
-    []
-  );
-
-  const metrics = metricsState ?? emptyMetrics;
+  const metrics = metricsState ?? EMPTY_DASHBOARD_METRICS;
 
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
         setLoading(true);
-        // Today it's mock; tomorrow it can be an API call.
-        const mock = await Promise.resolve(getMockDashboardData());
-        const next = getDashboardMetrics(mock);
+        setLoadError(null);
+        const [quotes, clients] = await Promise.all([
+          quoteService.list(),
+          clientService.list({ limit: 2000 }),
+        ]);
         if (!mounted) return;
+        const next = getDashboardMetricsFromApi(quotes, clients, new Date());
         setMetricsState(next);
+      } catch (e) {
+        if (!mounted) return;
+        setLoadError(e instanceof Error ? e.message : "Não foi possível carregar o dashboard.");
+        setMetricsState(EMPTY_DASHBOARD_METRICS);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -92,8 +98,13 @@ function DashboardContent() {
             Bem-vindo, {user?.name || user?.email}!
           </h1>
           <p className="text-text-80">
-            Visão comercial do mês (dados mockados por enquanto)
+            Visão comercial do mês — orçamentos e clientes da API (agregação no navegador até existir endpoint de relatórios).
           </p>
+          {loadError && (
+            <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+              {loadError}
+            </p>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
@@ -122,7 +133,7 @@ function DashboardContent() {
           <StatCard
             title="Taxa de conversão"
             value={pct(metrics.kpis.conversionRate)}
-            subtitle="Aprovados / (sem rascunhos)"
+            subtitle="Aprovados ÷ orçamentos do mês (exceto rascunhos)"
             trendLabel={ppLabel(metrics.kpis.conversionRateDeltaPp)}
             loading={loading}
             trendVariant={
