@@ -23,7 +23,7 @@ export default function QuoteDetailsPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const id = params?.id;
-  const { canChangeQuoteStatus } = usePermissions();
+  const { canChangeQuoteStatus, hasPermission } = usePermissions();
 
   const [quote, setQuote] = useState<Quote | null>(null);
   const [loading, setLoading] = useState(true);
@@ -68,9 +68,14 @@ export default function QuoteDetailsPage() {
   const canMarkSent =
     canChangeQuoteStatus() &&
     quote &&
+    statusKey !== 'draft' &&
     statusKey !== 'sent' &&
     statusKey !== 'approved' &&
     statusKey !== 'rejected';
+
+  const canContinueDraft =
+    statusKey === 'draft' &&
+    (hasPermission('quotes', 'update') || hasPermission('quotes', 'create'));
 
   return (
     <ProtectedRoute>
@@ -97,12 +102,31 @@ export default function QuoteDetailsPage() {
                       <span className="font-medium capitalize text-foreground">{statusText}</span>
                     </div>
 
+                    {statusKey === 'draft' && (
+                      <p className="text-sm text-text-80 max-w-xl">
+                        Este orçamento está salvo como rascunho. Quando tiver os dados do cliente e os itens,
+                        abra a edição e use <strong className="text-foreground">Finalizar orçamento</strong> para
+                        torná-lo pendente e seguir o fluxo normal.
+                      </p>
+                    )}
+
                     {statusKey === 'sent' && (
                       <p className="text-sm text-text-80 max-w-xl">
                         Use PDF ou WhatsApp/e-mail para enviar ao cliente. Quando houver retorno, altere o status
                         na lista de orçamentos para <strong className="text-foreground">Aprovado</strong> ou{' '}
                         <strong className="text-foreground">Rejeitado</strong>.
                       </p>
+                    )}
+
+                    {canContinueDraft && quote && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => router.push(`/dashboard/quotes/${quote.id}/edit`)}
+                      >
+                        Continuar edição
+                      </Button>
                     )}
 
                     {canMarkSent && (
@@ -119,6 +143,7 @@ export default function QuoteDetailsPage() {
 
                     {quote &&
                       !canChangeQuoteStatus() &&
+                      statusKey !== 'draft' &&
                       statusKey !== 'sent' &&
                       statusKey !== 'approved' &&
                       statusKey !== 'rejected' && (

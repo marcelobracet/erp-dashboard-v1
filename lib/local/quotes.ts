@@ -61,11 +61,20 @@ export const localQuoteStore = {
       client_id: data.client_id ?? 'manual',
       client: data.client,
       status: data.status ?? 'pending',
+      work_status: data.work_status,
       total,
+      subtotal: data.subtotal,
+      discount: data.discount,
       items,
       tenant_id: data.tenant_id,
       created_at: nowISO(),
       updated_at: nowISO(),
+
+      payment_method: data.payment_method,
+      payment_discount_enabled: data.payment_discount_enabled,
+      discount_percent: data.discount_percent,
+      payment_installments_enabled: data.payment_installments_enabled,
+      installment_count: data.installment_count,
 
       client_snapshot: data.client_snapshot,
       environments: data.environments,
@@ -88,6 +97,10 @@ export const localQuoteStore = {
       ...patch,
       id: current.id,
       updated_at: nowISO(),
+      items:
+        patch.items !== undefined
+          ? (patch.items as QuoteItem[])
+          : current.items,
     };
 
     quotes[idx] = updated;

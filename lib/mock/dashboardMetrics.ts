@@ -22,7 +22,12 @@ export interface DashboardKpis {
 
 export interface DashboardSeries {
   quotesLast30Days: Array<{ label: string; value: number }>;
-  approvedVsRejectedLast6Months: Array<{ label: string; approved: number; rejected: number }>;
+  approvedVsRejectedLast6Months: Array<{
+    label: string;
+    approved: number;
+    rejected: number;
+    open: number;
+  }>;
 }
 
 export interface DashboardLists {
@@ -93,6 +98,11 @@ function rejected(quotes: MockQuote[]) {
   return quotes.filter((q) => q.status === 'rejected');
 }
 
+/** Orçamentos ainda sem decisão comercial (não aprovado / não rejeitado / não cancelado). */
+function isOpenStatus(status: MockQuote['status']): boolean {
+  return status === 'pending' || status === 'draft' || status === 'sent';
+}
+
 export function getDashboardMetrics(data: MockDashboardData): DashboardMetrics {
   const now = parseISO(data.now);
   const currentStart = monthStartUTC(now);
@@ -143,7 +153,14 @@ export function getDashboardMetrics(data: MockDashboardData): DashboardMetrics {
   }
 
   // Series: last 6 months approved vs rejected
-  const months: Array<{ start: Date; end: Date; label: string; approved: number; rejected: number }> = [];
+  const months: Array<{
+    start: Date;
+    end: Date;
+    label: string;
+    approved: number;
+    rejected: number;
+    open: number;
+  }> = [];
   const start6 = addMonthsUTC(currentStart, -5);
   for (let i = 0; i < 6; i++) {
     const mStart = addMonthsUTC(start6, i);
@@ -154,17 +171,17 @@ export function getDashboardMetrics(data: MockDashboardData): DashboardMetrics {
       label: shortMonthPtBR(mStart.getUTCMonth()),
       approved: 0,
       rejected: 0,
+      open: 0,
     });
   }
 
   for (const q of data.quotes) {
-    if (q.status !== 'approved' && q.status !== 'rejected') continue;
     for (const m of months) {
-      if (inRange(q.createdAt, m.start, m.end)) {
-        if (q.status === 'approved') m.approved += 1;
-        if (q.status === 'rejected') m.rejected += 1;
-        break;
-      }
+      if (!inRange(q.createdAt, m.start, m.end)) continue;
+      if (q.status === 'approved') m.approved += 1;
+      else if (q.status === 'rejected') m.rejected += 1;
+      else if (isOpenStatus(q.status)) m.open += 1;
+      break;
     }
   }
 
@@ -216,6 +233,7 @@ export function getDashboardMetrics(data: MockDashboardData): DashboardMetrics {
         label: m.label,
         approved: m.approved,
         rejected: m.rejected,
+        open: m.open,
       })),
     },
 

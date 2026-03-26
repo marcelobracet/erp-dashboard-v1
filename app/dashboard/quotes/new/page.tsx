@@ -29,7 +29,11 @@ export default function NewQuotePage() {
             <div>
               <QuoteBuilder
                 onCancel={() => router.push('/dashboard/quotes')}
-                onSaved={(q) => {
+                onSaved={(q, kind) => {
+                  if (kind === 'draft') {
+                    router.replace(`/dashboard/quotes/${q.id}/edit`);
+                    return;
+                  }
                   setSaved(q);
                   router.push(`/dashboard/quotes/${q.id}`);
                 }}

@@ -9,6 +9,8 @@ import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { Switch } from "@/components/ui/Switch";
 import { clientService, Client } from "@/lib/api/services";
+import { useAuth } from "@/contexts/AuthContext";
+import { getTenantIdSync } from "@/lib/auth/tenant";
 import { usePermissions } from "@/hooks/usePermissions";
 import { ProtectedComponent } from "@/components/auth/ProtectedComponent";
 import { formatDate } from "@/lib/utils/format";
@@ -77,6 +79,7 @@ function ClientsContent() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const { hasPermission } = usePermissions();
+  const { user } = useAuth();
 
   const fetchClients = async () => {
     try {
@@ -203,6 +206,7 @@ function ClientsContent() {
       return;
     }
 
+    let tenantIdForCreate: string | undefined;
     if (!selectedClient) {
       const email = form.email.trim();
       const phone = form.phone.trim();
@@ -219,6 +223,14 @@ function ClientsContent() {
         setFormError("Documento é obrigatório para cadastro.");
         return;
       }
+      const tid = user?.tenant_id?.trim() || getTenantIdSync()?.trim();
+      if (!tid) {
+        setFormError(
+          "Não foi possível identificar o tenant. Faça login novamente ou atualize a página.",
+        );
+        return;
+      }
+      tenantIdForCreate = tid;
     }
 
     setSaving(true);
@@ -238,7 +250,14 @@ function ClientsContent() {
         };
         await clientService.update(selectedClient.id, payload);
       } else {
+        if (!tenantIdForCreate) {
+          setFormError(
+            "Não foi possível identificar o tenant. Faça login novamente ou atualize a página.",
+          );
+          return;
+        }
         await clientService.create({
+          tenant_id: tenantIdForCreate,
           name,
           email: form.email.trim(),
           phone: form.phone.trim(),

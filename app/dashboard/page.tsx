@@ -213,8 +213,10 @@ function DashboardContent() {
           <div className="app-card p-6">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h2 className="text-lg font-semibold text-foreground">Aprovados vs rejeitados</h2>
-                <p className="text-sm text-text-60">Últimos 6 meses</p>
+                <h2 className="text-lg font-semibold text-foreground">Aprovados, rejeitados e em aberto</h2>
+                <p className="text-sm text-text-60">
+                  Últimos 6 meses — em aberto: pendente, rascunho ou enviado (mês de criação)
+                </p>
               </div>
             </div>
             <div className="mt-5">

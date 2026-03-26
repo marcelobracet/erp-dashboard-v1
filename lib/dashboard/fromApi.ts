@@ -13,7 +13,14 @@ import type { DashboardMetrics } from '@/lib/mock/dashboardMetrics';
 
 function normalizeQuoteStatus(status: string | undefined): QuoteStatus {
   const v = String(status ?? 'pending').toLowerCase();
-  if (v === 'pending' || v === 'draft' || v === 'sent' || v === 'approved' || v === 'rejected') {
+  if (
+    v === 'pending' ||
+    v === 'draft' ||
+    v === 'sent' ||
+    v === 'approved' ||
+    v === 'rejected' ||
+    v === 'cancelled'
+  ) {
     return v;
   }
   return 'pending';

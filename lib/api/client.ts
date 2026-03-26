@@ -11,6 +11,17 @@ export interface ApiError {
   status?: number;
 }
 
+/** Monta URL absoluta; evita `/api/v1/api/v1/...` quando `baseURL` já termina em `/api/v1`. */
+export function buildFullApiUrl(baseURL: string, endpoint: string): string {
+  const base = baseURL.replace(/\/+$/, '');
+  let path = endpoint;
+  if (endpoint.startsWith('/api/v1/') && base.endsWith('/api/v1')) {
+    const rest = endpoint.replace(/^\/api\/v1\/?/, '');
+    path = rest.startsWith('/') ? rest : `/${rest}`;
+  }
+  return `${base}${path}`;
+}
+
 class ApiClient {
   /** Exposed so auth.ts can make authenticated requests directly. */
   readonly axios: AxiosInstance;
@@ -90,10 +101,14 @@ class ApiClient {
     if (!refreshToken) throw new Error('No refresh token');
 
     // Raw axios call — bypasses this instance's interceptors
+    const refreshUrl = buildFullApiUrl(
+      this.axios.defaults.baseURL || API_CONFIG.baseURL,
+      API_CONFIG.endpoints.auth.refresh,
+    );
     const { data } = await axios.post<{
       access_token: string;
       refresh_token?: string;
-    }>(`${API_CONFIG.baseURL}${API_CONFIG.endpoints.auth.refresh}`, {
+    }>(refreshUrl, {
       refresh_token: refreshToken,
     });
 
@@ -101,6 +116,19 @@ class ApiClient {
     if (data.refresh_token) this.setRefreshToken(data.refresh_token);
 
     return data.access_token;
+  }
+
+  /**
+   * Se `NEXT_PUBLIC_API_URL` já termina em `/api/v1`, evita `/api/v1/api/v1/...` (404).
+   */
+  private resolveEndpoint(endpoint: string): string {
+    const base = (this.axios.defaults.baseURL || '').replace(/\/+$/, '');
+    if (!endpoint.startsWith('/api/v1/')) return endpoint;
+    if (base.endsWith('/api/v1')) {
+      const rest = endpoint.replace(/^\/api\/v1\/?/, '');
+      return rest.startsWith('/') ? rest : `/${rest}`;
+    }
+    return endpoint;
   }
 
   private normalizeError(error: AxiosError): ApiError {
@@ -125,22 +153,22 @@ class ApiClient {
   // ── Convenience wrappers ─────────────────────────────────────────────
 
   async get<T>(endpoint: string, config?: AxiosRequestConfig): Promise<T> {
-    const { data } = await this.axios.get<T>(endpoint, config);
+    const { data } = await this.axios.get<T>(this.resolveEndpoint(endpoint), config);
     return data;
   }
 
   async post<T>(endpoint: string, payload?: unknown): Promise<T> {
-    const { data } = await this.axios.post<T>(endpoint, payload);
+    const { data } = await this.axios.post<T>(this.resolveEndpoint(endpoint), payload);
     return data;
   }
 
   async put<T>(endpoint: string, payload?: unknown): Promise<T> {
-    const { data } = await this.axios.put<T>(endpoint, payload);
+    const { data } = await this.axios.put<T>(this.resolveEndpoint(endpoint), payload);
     return data;
   }
 
   async delete<T>(endpoint: string): Promise<T> {
-    const { data } = await this.axios.delete<T>(endpoint);
+    const { data } = await this.axios.delete<T>(this.resolveEndpoint(endpoint));
     return data;
   }
 

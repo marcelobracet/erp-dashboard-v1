@@ -1,4 +1,4 @@
-export type QuoteStatus = 'pending' | 'sent' | 'approved' | 'rejected' | 'draft';
+export type QuoteStatus = 'pending' | 'sent' | 'approved' | 'rejected' | 'draft' | 'cancelled';
 
 export interface MockQuote {
   id: string;

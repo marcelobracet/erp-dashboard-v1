@@ -99,3 +99,29 @@ export function toQuoteItem(product: Product, draft: QuoteItemDraft): QuoteItem 
 export function sumQuote(items: QuoteItem[]): number {
   return items.reduce((acc, it) => acc + Number(it.subtotal ?? 0), 0);
 }
+
+/** Mirrors erp-api quote.ComputeDiscountAndTotal (percent vs legacy R$). */
+export function computeQuoteTotals(
+  subtotal: number,
+  opts: {
+    paymentDiscountEnabled: boolean;
+    discountPercent: number;
+    /** Desconto fixo em R$ quando o percentual não está ativo ou é 0. */
+    discountFixed: number;
+  },
+): { subtotal: number; discount: number; total: number } {
+  const sub = Math.max(0, subtotal);
+  let legacy = 0;
+  if (!opts.paymentDiscountEnabled || opts.discountPercent <= 0) {
+    legacy = Math.max(0, opts.discountFixed);
+  }
+  let discountMoney = 0;
+  if (opts.paymentDiscountEnabled && opts.discountPercent > 0) {
+    const p = Math.min(100, Math.max(0, opts.discountPercent));
+    discountMoney = sub * (p / 100);
+  } else if (legacy > 0) {
+    discountMoney = legacy;
+  }
+  discountMoney = Math.min(sub, Math.max(0, discountMoney));
+  return { subtotal: sub, discount: discountMoney, total: sub - discountMoney };
+}

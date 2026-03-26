@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { apiClient, type ApiError } from './client';
+import { apiClient, buildFullApiUrl, type ApiError } from './client';
 import { API_CONFIG } from './config';
 
 export interface LoginRequest {
@@ -58,7 +58,7 @@ export const authService = {
   async login(credentials: LoginRequest): Promise<LoginResponse> {
     try {
       const { data } = await axios.post<LoginResponse>(
-        `${API_CONFIG.baseURL}${API_CONFIG.endpoints.auth.login}`,
+        buildFullApiUrl(API_CONFIG.baseURL, API_CONFIG.endpoints.auth.login),
         credentials,
         { headers: { 'Content-Type': 'application/json' } }
       );
@@ -88,11 +88,10 @@ export const authService = {
    */
   async register(payload: RegisterRequest): Promise<RegisterResponse> {
     try {
-      const { data } = await apiClient.axios.post<RegisterResponse>(
+      return await apiClient.post<RegisterResponse>(
         API_CONFIG.endpoints.users.register,
-        payload
+        payload,
       );
-      return data;
     } catch (err) {
       // The response interceptor already normalises AxiosError → ApiError.
       // We just enrich the message for known status codes.

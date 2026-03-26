@@ -71,16 +71,19 @@
   --glass-10: rgba(255, 255, 255, 0.10);
   --glass-15: rgba(255, 255, 255, 0.14);
 
-  /* Keep brand; adjust semantic accent slightly for dark readability */
-  --accent: var(--brand-sky);
+  /*
+   * Ações primárias: fundo escuro (teal), texto claro — evita sky (#99dfec)
+   * como fill (quase branco), que quebrava contraste com texto claro.
+   */
+  --accent: var(--brand-teal);
   --accent-hover: var(--brand-cyan);
-  --accent-detail: var(--brand-sky);
-  --accent-muted: var(--brand-cyan);
-  --accent-soft: rgba(153, 223, 236, 0.18);
+  --accent-detail: var(--brand-cyan);
+  --accent-muted: var(--brand-sky);
+  --accent-soft: rgba(2, 146, 183, 0.22);
 
-  --accent-15: rgba(153, 223, 236, 0.16);
-  --accent-20: rgba(153, 223, 236, 0.22);
-  --accent-90: rgba(26, 200, 219, 0.9);
+  --accent-15: rgba(2, 146, 183, 0.28);
+  --accent-20: rgba(2, 146, 183, 0.36);
+  --accent-90: rgba(26, 200, 219, 0.92);
 
   --skeleton-base: rgba(244, 246, 252, 0.10);
   --skeleton-highlight: rgba(255, 255, 255, 0.14);
@@ -201,6 +204,17 @@ body {
   .skeleton::after {
     animation: none;
     opacity: 0;
+  }
+}
+
+@keyframes celebration-card-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
   }
 }
 

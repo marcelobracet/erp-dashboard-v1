@@ -3,9 +3,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
-import type { Product, Quote, QuoteItem } from '@/lib/api/services';
+import type { Product, Quote, QuoteItem, QuotePaymentMethod } from '@/lib/api/services';
 import { productService, quoteService } from '@/lib/api/services';
-import { toQuoteItem, sumQuote } from '@/lib/utils/quoteCalc';
+import { computeQuoteTotals, toQuoteItem, sumQuote } from '@/lib/utils/quoteCalc';
+import { Switch } from '@/components/ui/Switch';
 
 type EnvDraft = {
   id: string;
@@ -43,12 +44,165 @@ function parseNum(raw: string): number | undefined {
   return n;
 }
 
+function quoteItemToItemDraft(it: QuoteItem): ItemDraft {
+  return {
+    id: it.id,
+    product_id: it.product_id ?? '',
+    quantity: it.quantity > 0 ? it.quantity : 1,
+    width_m: it.width_m,
+    height_m: it.height_m,
+    length_m: it.length_m,
+    note: it.note,
+  };
+}
+
+function buildEnvsFromQuote(q: Quote): EnvDraft[] {
+  const rawItems = q.items ?? [];
+  if (rawItems.length === 0 && (!q.environments || q.environments.length === 0)) {
+    return [{ id: newId('env'), name: 'Ambiente 1', items: [] }];
+  }
+  const byItemId = new Map(rawItems.map((it) => [it.id, it]));
+
+  if (q.environments && q.environments.length > 0) {
+    return q.environments.map((e) => ({
+      id: e.id || newId('env'),
+      name: e.name || 'Ambiente',
+      items: (e.item_ids ?? [])
+        .map((iid) => byItemId.get(iid))
+        .filter((it): it is QuoteItem => !!it)
+        .map(quoteItemToItemDraft),
+    }));
+  }
+
+  const byEnv = new Map<string, QuoteItem[]>();
+  for (const it of rawItems) {
+    const k = it.environment_id || '_default';
+    const arr = byEnv.get(k) ?? [];
+    arr.push(it);
+    byEnv.set(k, arr);
+  }
+  let idx = 1;
+  return Array.from(byEnv.entries()).map(([, arr]) => ({
+    id: arr[0]?.environment_id || newId('env'),
+    name: arr[0]?.environment_name || `Ambiente ${idx++}`,
+    items: arr.map(quoteItemToItemDraft),
+  }));
+}
+
+function clientDraftFromQuote(q: Quote): ClientDraft {
+  const snap = q.client_snapshot;
+  const c = q.client;
+  return {
+    name: (snap?.name ?? c?.name ?? '').trim(),
+    phone: (snap?.phone ?? '').trim(),
+    email: (snap?.email ?? '').trim(),
+    address: (snap?.address ?? '').trim(),
+  };
+}
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function resolveClientIdForPayload(persistedClientId: string | undefined): {
+  client_id: string;
+  client: { id: string; name: string };
+} {
+  const raw = persistedClientId?.trim() ?? '';
+  if (raw && raw !== 'manual' && UUID_RE.test(raw)) {
+    return { client_id: raw, client: { id: raw, name: '' } };
+  }
+  return { client_id: 'manual', client: { id: 'manual', name: '' } };
+}
+
+type PaymentDraft = {
+  paymentMethod: QuotePaymentMethod;
+  paymentDiscountEnabled: boolean;
+  discountPercent: number;
+  paymentInstallmentsEnabled: boolean;
+  installmentCount: number;
+  /** Desconto fixo (R$) quando o desconto percentual está desligado ou em 0%. */
+  discountFixedBrl: number;
+};
+
+const PAYMENT_METHODS: { id: QuotePaymentMethod; label: string }[] = [
+  { id: 'pix', label: 'DINHEIRO/PIX' },
+  { id: 'boleto', label: 'BOLETO' },
+  { id: 'credit', label: 'CRÉDITO' },
+  { id: 'debit', label: 'DÉBITO' },
+];
+
+function discountFixedFromLoadedQuote(q: Quote): number {
+  if (q.payment_discount_enabled && (q.discount_percent ?? 0) > 0) return 0;
+  return q.discount ?? 0;
+}
+
+function buildPayload(
+  client: ClientDraft,
+  envs: EnvDraft[],
+  notes: string,
+  allItems: QuoteItem[],
+  status: 'draft' | 'pending',
+  payment: PaymentDraft,
+  opts?: { persistedClientId?: string },
+): Partial<Quote> {
+  const itemsWithProduct = allItems.filter((it) => it.product_id?.trim());
+  const snapName =
+    client.name.trim() ||
+    (status === 'draft' ? 'Sem cliente (rascunho)' : '');
+  const { client_id, client: clientRef } = resolveClientIdForPayload(opts?.persistedClientId);
+  const subtotal = sumQuote(allItems);
+  const legacyDisc =
+    !payment.paymentDiscountEnabled || payment.discountPercent <= 0
+      ? Math.max(0, payment.discountFixedBrl)
+      : 0;
+  const totals = computeQuoteTotals(subtotal, {
+    paymentDiscountEnabled: payment.paymentDiscountEnabled,
+    discountPercent: payment.discountPercent,
+    discountFixed: legacyDisc,
+  });
+  return {
+    status,
+    total: totals.total,
+    payment_method: payment.paymentMethod,
+    payment_discount_enabled: payment.paymentDiscountEnabled,
+    discount_percent: payment.discountPercent,
+    payment_installments_enabled: payment.paymentInstallmentsEnabled,
+    installment_count: payment.installmentCount,
+    discount: legacyDisc,
+    items: itemsWithProduct,
+    client_id,
+    client: {
+      id: clientRef.id,
+      name: snapName || 'Sem cliente (rascunho)',
+    },
+    client_snapshot: {
+      name: snapName || 'Sem cliente (rascunho)',
+      phone: client.phone.trim() || undefined,
+      email: client.email.trim() || undefined,
+      address: client.address.trim() || undefined,
+    },
+    environments: envs.map((e) => ({
+      id: e.id,
+      name: e.name,
+      item_ids: e.items.map((it) => it.id),
+    })),
+    notes: notes.trim() || undefined,
+  };
+}
+
+export type QuoteSaveKind = 'draft' | 'final';
+
 export default function QuoteBuilder({
   onSaved,
   onCancel,
+  existingQuoteId,
+  initialQuote,
 }: {
-  onSaved: (q: Quote) => void;
+  onSaved: (q: Quote, kind: QuoteSaveKind) => void;
   onCancel: () => void;
+  /** Edição de orçamento existente (ex.: rascunho salvo). */
+  existingQuoteId?: string;
+  initialQuote?: Quote | null;
 }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
@@ -65,8 +219,17 @@ export default function QuoteBuilder({
   ]);
 
   const [notes, setNotes] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<QuotePaymentMethod>('pix');
+  const [paymentDiscountEnabled, setPaymentDiscountEnabled] = useState(false);
+  const [discountPercent, setDiscountPercent] = useState(0);
+  const [paymentInstallmentsEnabled, setPaymentInstallmentsEnabled] = useState(false);
+  const [installmentCount, setInstallmentCount] = useState(0);
+  const [discountFixedBrl, setDiscountFixedBrl] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const hydratedSigRef = React.useRef<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -84,6 +247,46 @@ export default function QuoteBuilder({
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!initialQuote?.id) return;
+    const sig = `${initialQuote.id}:${initialQuote.updated_at ?? initialQuote.created_at ?? ''}`;
+    if (hydratedSigRef.current === sig) return;
+    hydratedSigRef.current = sig;
+    setClient(clientDraftFromQuote(initialQuote));
+    const nextEnvs = buildEnvsFromQuote(initialQuote);
+    setEnvs(nextEnvs.length ? nextEnvs : [{ id: newId('env'), name: 'Ambiente 1', items: [] }]);
+    setNotes(initialQuote.notes?.trim() ?? '');
+    setPaymentMethod(initialQuote.payment_method ?? 'pix');
+    setPaymentDiscountEnabled(initialQuote.payment_discount_enabled === true);
+    setDiscountPercent(
+      initialQuote.discount_percent != null ? Number(initialQuote.discount_percent) : 0,
+    );
+    setPaymentInstallmentsEnabled(initialQuote.payment_installments_enabled === true);
+    setInstallmentCount(
+      initialQuote.installment_count != null ? Math.max(0, initialQuote.installment_count) : 0,
+    );
+    setDiscountFixedBrl(discountFixedFromLoadedQuote(initialQuote));
+  }, [initialQuote]);
+
+  const paymentDraft = useMemo(
+    (): PaymentDraft => ({
+      paymentMethod,
+      paymentDiscountEnabled,
+      discountPercent,
+      paymentInstallmentsEnabled,
+      installmentCount,
+      discountFixedBrl,
+    }),
+    [
+      paymentMethod,
+      paymentDiscountEnabled,
+      discountPercent,
+      paymentInstallmentsEnabled,
+      installmentCount,
+      discountFixedBrl,
+    ],
+  );
 
   const productById = useMemo(() => {
     const m = new Map<string, Product>();
@@ -108,14 +311,25 @@ export default function QuoteBuilder({
             note: it.note,
             environment_id: env.id,
             environment_name: env.name,
-          })
+          }),
         );
       }
     }
     return items;
   }, [envs, productById]);
 
-  const total = useMemo(() => sumQuote(allItems), [allItems]);
+  const previewTotals = useMemo(() => {
+    const sub = sumQuote(allItems);
+    const legacy =
+      !paymentDiscountEnabled || discountPercent <= 0
+        ? Math.max(0, discountFixedBrl)
+        : 0;
+    return computeQuoteTotals(sub, {
+      paymentDiscountEnabled,
+      discountPercent,
+      discountFixed: legacy,
+    });
+  }, [allItems, paymentDiscountEnabled, discountPercent, discountFixedBrl]);
 
   function updateEnv(envId: string, patch: Partial<EnvDraft>) {
     setEnvs((prev) => prev.map((e) => (e.id === envId ? { ...e, ...patch } : e)));
@@ -151,7 +365,7 @@ export default function QuoteBuilder({
             },
           ],
         };
-      })
+      }),
     );
   }
 
@@ -163,7 +377,7 @@ export default function QuoteBuilder({
           ...env,
           items: env.items.map((it) => (it.id === itemId ? { ...it, ...patch } : it)),
         };
-      })
+      }),
     );
   }
 
@@ -172,47 +386,68 @@ export default function QuoteBuilder({
       prev.map((env) => {
         if (env.id !== envId) return env;
         return { ...env, items: env.items.filter((it) => it.id !== itemId) };
-      })
+      }),
     );
   }
 
-  async function handleSave() {
+  async function handleSaveDraft() {
+    setError(null);
+    setSavingDraft(true);
+    try {
+      const payload = buildPayload(
+        client,
+        envs,
+        notes,
+        allItems,
+        'draft',
+        paymentDraft,
+        { persistedClientId: existingQuoteId ? initialQuote?.client_id : undefined },
+      );
+      if (existingQuoteId) {
+        const saved = await quoteService.update(existingQuoteId, payload);
+        onSaved(saved, 'draft');
+      } else {
+        const saved = await quoteService.create(payload);
+        onSaved(saved, 'draft');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao salvar rascunho');
+    } finally {
+      setSavingDraft(false);
+    }
+  }
+
+  async function handleSaveFinal() {
     setError(null);
 
     if (!client.name.trim()) {
-      setError('Informe o nome do cliente.');
+      setError('Informe o nome do cliente para finalizar o orçamento.');
       return;
     }
 
     if (allItems.length === 0) {
-      setError('Adicione ao menos 1 item no orçamento.');
+      setError('Adicione ao menos 1 item com produto selecionado.');
       return;
     }
 
     setSaving(true);
     try {
-      const quotePayload: Partial<Quote> = {
-        status: 'pending',
-        total,
-        items: allItems,
-        client_id: 'manual',
-        client: { id: 'manual', name: client.name.trim() },
-        client_snapshot: {
-          name: client.name.trim(),
-          phone: client.phone.trim() || undefined,
-          email: client.email.trim() || undefined,
-          address: client.address.trim() || undefined,
-        },
-        environments: envs.map((e) => ({
-          id: e.id,
-          name: e.name,
-          item_ids: e.items.map((it) => it.id),
-        })),
-        notes: notes.trim() || undefined,
-      };
-
-      const saved = await quoteService.create(quotePayload);
-      onSaved(saved);
+      const payload = buildPayload(
+        client,
+        envs,
+        notes,
+        allItems,
+        'pending',
+        paymentDraft,
+        { persistedClientId: existingQuoteId ? initialQuote?.client_id : undefined },
+      );
+      if (existingQuoteId) {
+        const saved = await quoteService.update(existingQuoteId, payload);
+        onSaved(saved, 'final');
+      } else {
+        const saved = await quoteService.create(payload);
+        onSaved(saved, 'final');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao salvar orçamento');
     } finally {
@@ -223,13 +458,23 @@ export default function QuoteBuilder({
   return (
     <div className="space-y-6">
       {error && (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-300">
           {error}
         </div>
       )}
 
+      <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 px-4 py-3 text-sm text-text-80">
+        <strong className="text-foreground">Rascunho</strong> — use{' '}
+        <span className="font-medium">Salvar rascunho</span> se ainda não tiver contato com o cliente. Você pode
+        voltar depois em <span className="font-medium">Orçamentos → Continuar edição</span>. Para proposta
+        oficial, informe o cliente e pelo menos um item e clique em <span className="font-medium">Finalizar orçamento</span>.
+      </div>
+
       <div className="app-card p-6">
         <h2 className="text-lg font-semibold text-foreground">Dados do cliente</h2>
+        <p className="mt-1 text-xs text-text-60">
+          No rascunho o nome pode ficar em branco (será marcado como sem cliente até você finalizar).
+        </p>
         <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input label="Nome" value={client.name} onChange={(e) => setClient((p) => ({ ...p, name: e.target.value }))} />
           <Input label="Telefone" value={client.phone} onChange={(e) => setClient((p) => ({ ...p, phone: e.target.value }))} />
@@ -394,6 +639,143 @@ export default function QuoteBuilder({
         ))}
       </div>
 
+      <div className="app-card p-6 space-y-6">
+        <div className="flex items-center gap-2">
+          <span className="text-accent text-lg" aria-hidden>
+            💳
+          </span>
+          <h2 className="text-sm font-bold uppercase tracking-wide text-accent">
+            Condições de pagamento
+          </h2>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {PAYMENT_METHODS.map((m) => {
+            const selected = paymentMethod === m.id;
+            return (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => setPaymentMethod(m.id)}
+                className={`inline-flex items-center gap-2 rounded-full border px-4 py-2.5 text-xs font-semibold uppercase tracking-wide transition-colors ${
+                  selected
+                    ? 'border-accent bg-accent text-white shadow-sm'
+                    : 'border-glass-10 bg-glass-5 text-text-60 hover:border-glass-20'
+                }`}
+              >
+                <span
+                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[10px] ${
+                    selected ? 'border-white bg-white/20' : 'border-glass-20 bg-background'
+                  }`}
+                >
+                  {selected ? '✓' : ''}
+                </span>
+                {m.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="rounded-2xl border border-glass-10 bg-glass-5 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <span className="text-xs font-semibold uppercase tracking-wide text-text-60">
+                Desconto
+              </span>
+              <Switch
+                checked={paymentDiscountEnabled}
+                onCheckedChange={setPaymentDiscountEnabled}
+                aria-label="Ativar desconto percentual"
+                size="sm"
+              />
+            </div>
+            {paymentDiscountEnabled ? (
+              <div className="mt-4 flex flex-col items-center">
+                <label className="sr-only" htmlFor="quote-discount-pct">
+                  Percentual de desconto
+                </label>
+                <input
+                  id="quote-discount-pct"
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={0.5}
+                  value={Number.isFinite(discountPercent) ? discountPercent : 0}
+                  onChange={(e) => {
+                    const n = parseNum(e.target.value);
+                    setDiscountPercent(n != null ? Math.min(100, Math.max(0, n)) : 0);
+                  }}
+                  className="w-full max-w-32 border-0 bg-transparent text-center text-4xl font-bold tabular-nums text-foreground focus:outline-none focus:ring-0"
+                />
+                <span className="text-xs text-text-60">% sobre o subtotal</span>
+              </div>
+            ) : (
+              <div className="mt-4 space-y-2">
+                <label className="text-xs text-text-60" htmlFor="quote-discount-fixed">
+                  Desconto fixo (R$)
+                </label>
+                <input
+                  id="quote-discount-fixed"
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={discountFixedBrl}
+                  onChange={(e) => {
+                    const n = parseNum(e.target.value);
+                    setDiscountFixedBrl(n != null ? Math.max(0, n) : 0);
+                  }}
+                  className="w-full rounded-xl border border-glass-10 bg-background px-3 py-2 text-sm text-foreground"
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-glass-10 bg-glass-5 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <span className="text-xs font-semibold uppercase tracking-wide text-text-60">
+                Parcelas
+              </span>
+              <Switch
+                checked={paymentInstallmentsEnabled}
+                onCheckedChange={setPaymentInstallmentsEnabled}
+                aria-label="Informar parcelamento"
+                size="sm"
+              />
+            </div>
+            <div className="mt-4 flex items-center justify-center gap-2">
+              <button
+                type="button"
+                disabled={!paymentInstallmentsEnabled || installmentCount <= 0}
+                onClick={() =>
+                  setInstallmentCount((c) => Math.max(0, c - 1))
+                }
+                className="rounded-lg border border-glass-10 px-3 py-2 text-sm disabled:opacity-40"
+                aria-label="Menos parcelas"
+              >
+                −
+              </button>
+              <span className="min-w-16 text-center text-4xl font-bold tabular-nums text-foreground">
+                {paymentInstallmentsEnabled ? installmentCount : 0}
+              </span>
+              <button
+                type="button"
+                disabled={!paymentInstallmentsEnabled}
+                onClick={() =>
+                  setInstallmentCount((c) => Math.min(48, c + 1))
+                }
+                className="rounded-lg border border-glass-10 px-3 py-2 text-sm disabled:opacity-40"
+                aria-label="Mais parcelas"
+              >
+                +
+              </button>
+            </div>
+            <p className="mt-2 text-center text-xs text-text-60">
+              0 = à vista · máx. 48x
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="app-card p-6">
         <h2 className="text-lg font-semibold text-foreground">Observações gerais</h2>
         <textarea
@@ -404,16 +786,38 @@ export default function QuoteBuilder({
         />
       </div>
 
-      <div className="flex items-center justify-between">
-        <div className="text-sm text-text-80">
-          Total estimado: <span className="font-semibold text-foreground">R$ {total.toFixed(2).replace('.', ',')}</span>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="text-sm text-text-80 space-y-1">
+          <div>
+            Subtotal:{' '}
+            <span className="font-medium text-foreground">
+              R$ {previewTotals.subtotal.toFixed(2).replace('.', ',')}
+            </span>
+          </div>
+          {previewTotals.discount > 0 && (
+            <div>
+              Desconto:{' '}
+              <span className="font-medium text-foreground">
+                − R$ {previewTotals.discount.toFixed(2).replace('.', ',')}
+              </span>
+            </div>
+          )}
+          <div>
+            Total:{' '}
+            <span className="font-semibold text-foreground">
+              R$ {previewTotals.total.toFixed(2).replace('.', ',')}
+            </span>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 justify-end">
           <Button variant="outline" onClick={onCancel}>
             Cancelar
           </Button>
-          <Button onClick={handleSave} isLoading={saving}>
-            Salvar orçamento
+          <Button variant="secondary" onClick={() => void handleSaveDraft()} isLoading={savingDraft} disabled={saving}>
+            Salvar rascunho
+          </Button>
+          <Button onClick={() => void handleSaveFinal()} isLoading={saving} disabled={savingDraft}>
+            Finalizar orçamento
           </Button>
         </div>
       </div>

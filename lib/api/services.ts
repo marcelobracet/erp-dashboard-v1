@@ -69,16 +69,34 @@ export interface Product {
   is_active?: boolean;
 }
 
+/** Valores persistidos pela erp-api (`payment_method`). */
+export type QuotePaymentMethod = "pix" | "boleto" | "credit" | "debit";
+
 export interface Quote {
   id: string;
   client_id: string;
   client?: Client;
+  /** Ciclo comercial do orçamento (pending, sent, approved, …). */
   status: string;
+  /** Andamento da obra / execução após aprovação (quando a API enviar). */
+  work_status?: string;
   total: number;
+  /** Soma dos itens antes do desconto (API). */
+  subtotal?: number;
+  /** Desconto aplicado em R$ (API). */
+  discount?: number;
+  total_value?: number;
   items?: QuoteItem[];
   tenant_id?: string;
   created_at?: string;
   updated_at?: string;
+
+  /** Condições de pagamento (erp-api). */
+  payment_method?: QuotePaymentMethod;
+  payment_discount_enabled?: boolean;
+  discount_percent?: number;
+  payment_installments_enabled?: boolean;
+  installment_count?: number;
 
   // Snapshot fields for printable proposal
   client_snapshot?: {
@@ -93,6 +111,10 @@ export interface Quote {
     item_ids: string[];
   }>;
   notes?: string;
+  /** Nome do cliente na listagem (API). */
+  client_name?: string;
+  /** Quantidade de linhas (listagem API). */
+  items_count?: number;
 }
 
 export interface QuoteItem {
@@ -594,6 +616,16 @@ async function hydrateQuoteLineItems(
   return q;
 }
 
+function normalizeQuotePaymentMethod(raw: unknown): QuotePaymentMethod {
+  const s = String(raw ?? "")
+    .trim()
+    .toLowerCase();
+  if (s === "boleto") return "boleto";
+  if (s === "credit" || s === "credito" || s === "crédito") return "credit";
+  if (s === "debit" || s === "debito" || s === "débito") return "debit";
+  return "pix";
+}
+
 /** Maps API quote JSON to dashboard `Quote` (total_value → total, JSON fields). */
 function normalizeQuoteFromApi(raw: unknown): Quote {
   const layers = quotePayloadLayers(raw);
@@ -602,19 +634,48 @@ function normalizeQuoteFromApi(raw: unknown): Quote {
     throw new Error("Resposta inválida da API");
   }
   const total = Number(r.total ?? r.total_value ?? 0);
+  const subtotal =
+    r.subtotal != null ? Number(r.subtotal) : undefined;
+  const discount =
+    r.discount != null ? Number(r.discount) : undefined;
   const mergedItems = parseQuoteItemsAcrossLayers(layers);
+  const workRaw =
+    r.work_status ?? r.obra_status ?? r.construction_status ?? r.job_status;
+  const work_status =
+    workRaw != null && String(workRaw).trim() !== ""
+      ? String(workRaw).trim()
+      : undefined;
   return {
     id: String(r.id ?? ""),
     client_id: String(r.client_id ?? ""),
     status: String(r.status ?? ""),
+    work_status,
     total,
+    subtotal,
+    discount,
+    total_value: r.total_value != null ? Number(r.total_value) : total,
     tenant_id: r.tenant_id != null ? String(r.tenant_id) : undefined,
     created_at: r.created_at != null ? String(r.created_at) : undefined,
     updated_at: r.updated_at != null ? String(r.updated_at) : undefined,
     notes: r.notes != null ? String(r.notes) : undefined,
+    payment_method: normalizeQuotePaymentMethod(r.payment_method),
+    payment_discount_enabled: r.payment_discount_enabled === true,
+    discount_percent:
+      r.discount_percent != null ? Number(r.discount_percent) : undefined,
+    payment_installments_enabled: r.payment_installments_enabled === true,
+    installment_count:
+      r.installment_count != null
+        ? Math.max(0, Math.trunc(Number(r.installment_count)))
+        : undefined,
     client_snapshot: parseClientSnapshot(r.client_snapshot),
     environments: parseEnvironments(r.environments),
     items: mergedItems.length > 0 ? mergedItems : undefined,
+    client_name:
+      r.client_name != null && String(r.client_name).trim() !== ""
+        ? String(r.client_name)
+        : undefined,
+    items_count:
+      r.items_count != null ? Math.max(0, Math.trunc(Number(r.items_count))) : undefined,
   };
 }
 
@@ -729,15 +790,37 @@ export const productService = {
 };
 
 export const quoteService = {
-  list: async () => {
-    if (isLocalQuotesEnabled()) return localQuoteStore.list();
+  list: async (params?: {
+    view?:
+      | "pendentes"
+      | "aprovados"
+      | "em_producao"
+      | "finalizados"
+      | "cancelados"
+      | "todos";
+    limit?: number;
+    offset?: number;
+  }) => {
+    if (isLocalQuotesEnabled()) {
+      const all = localQuoteStore.list();
+      const tab = params?.view ?? "todos";
+      const { quoteMatchesListTab } = await import("@/lib/utils/quoteListTab");
+      if (tab === "todos") return all;
+      return all.filter((q) => quoteMatchesListTab(q, tab));
+    }
     try {
       const res = await apiClient.get<
         | Quote[]
         | PaginatedResponse<Quote>
         | QuotesListResponse
         | { error?: string; message?: string }
-      >(API_CONFIG.endpoints.quotes.list);
+      >(
+        buildUrl(API_CONFIG.endpoints.quotes.list, {
+          view: params?.view,
+          limit: params?.limit ?? 500,
+          offset: params?.offset ?? 0,
+        }),
+      );
 
       if (
         !Array.isArray(res) &&
@@ -753,7 +836,11 @@ export const quoteService = {
         res as Quote[] | PaginatedResponse<Quote> | QuotesListResponse,
       ).map((q) => normalizeQuoteFromApi(q));
     } catch {
-      return localQuoteStore.list();
+      const all = localQuoteStore.list();
+      const tab = params?.view ?? "todos";
+      const { quoteMatchesListTab } = await import("@/lib/utils/quoteListTab");
+      if (tab === "todos") return all;
+      return all.filter((q) => quoteMatchesListTab(q, tab));
     }
   },
   getById: async (id: string) => {
@@ -811,7 +898,13 @@ export const quoteService = {
       API_CONFIG.endpoints.quotes.byId(id),
       body,
     );
-    return normalizeQuoteFromApi(raw);
+    const q = normalizeQuoteFromApi(raw);
+    const sentItems = Array.isArray(data.items)
+      ? (data.items as QuoteItem[])
+      : [];
+    const mergedItems = q.items?.length ? q.items : sentItems;
+    if (mergedItems.length) stashQuoteLineItems(String(id), mergedItems);
+    return { ...q, items: mergedItems.length ? mergedItems : undefined };
   },
   delete: async (id: string) => {
     if (isLocalQuotesEnabled()) {
@@ -854,6 +947,78 @@ export interface TenantSettingsResponse {
     secondary_color?: string;
   };
 }
+
+export type RoadmapItemStatus = "backlog" | "in_progress" | "done";
+
+export interface RoadmapItem {
+  id: string;
+  title: string;
+  description?: string;
+  status: RoadmapItemStatus;
+  sort_order?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+function normalizeRoadmapItem(raw: unknown): RoadmapItem {
+  if (!raw || typeof raw !== "object") {
+    throw new Error("Resposta inválida da API (roadmap)");
+  }
+  const r = raw as Record<string, unknown>;
+  return {
+    id: String(r.id ?? ""),
+    title: String(r.title ?? ""),
+    description: r.description != null ? String(r.description) : undefined,
+    status: (r.status as RoadmapItemStatus) ?? "backlog",
+    sort_order: r.sort_order != null ? Number(r.sort_order) : undefined,
+    created_at: r.created_at != null ? String(r.created_at) : undefined,
+    updated_at: r.updated_at != null ? String(r.updated_at) : undefined,
+  };
+}
+
+export const roadmapService = {
+  listItems: async (): Promise<RoadmapItem[]> => {
+    const res = await apiClient.get<
+      { items?: RoadmapItem[] } | RoadmapItem[]
+    >(API_CONFIG.endpoints.roadmap.items);
+    const items = Array.isArray(res) ? res : res.items ?? [];
+    return items.map((x) => normalizeRoadmapItem(x));
+  },
+
+  createItem: (data: {
+    title: string;
+    description?: string;
+    status?: RoadmapItemStatus;
+  }) =>
+    apiClient
+      .post<unknown>(API_CONFIG.endpoints.roadmap.items, {
+        title: data.title,
+        description: data.description ?? "",
+        status: data.status,
+      })
+      .then((r) => normalizeRoadmapItem(r)),
+
+  updateItem: (
+    id: string,
+    data: { title?: string; description?: string; status?: RoadmapItemStatus },
+  ) =>
+    apiClient
+      .put<unknown>(API_CONFIG.endpoints.roadmap.itemById(id), data)
+      .then((r) => normalizeRoadmapItem(r)),
+
+  deleteItem: async (id: string) => {
+    await apiClient.axios.delete(API_CONFIG.endpoints.roadmap.itemById(id));
+  },
+
+  submitSuggestion: (data: { title: string; description: string }) =>
+    apiClient.post<{ message?: string }>(
+      API_CONFIG.endpoints.roadmap.suggestions,
+      {
+        title: data.title,
+        description: data.description,
+      },
+    ),
+};
 
 export const settingsService = {
   get: (tenantId?: string) => {

@@ -11,6 +11,7 @@ import {
   DEFAULT_ROLE_PERMISSIONS,
   fetchPermissionsFromApi,
 } from '@/lib/auth/permissions';
+import { setTenantIdSync } from '@/lib/auth/tenant';
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -55,10 +56,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     authService
       .getProfile()
-      .then((profile) => setUser(profile))
+      .then((profile) => {
+        if (profile.tenant_id?.trim()) {
+          setTenantIdSync(profile.tenant_id);
+        }
+        setUser(profile);
+      })
       .catch(() => {
         // Token expired or invalid — clear storage silently.
         apiClient.removeToken();
+        setTenantIdSync(null);
       })
       .finally(() => setIsLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -92,6 +99,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       tenant_id: data.user.tenant_id,
     };
 
+    if (data.user.tenant_id?.trim()) {
+      setTenantIdSync(data.user.tenant_id);
+    }
     setUser(profile);
     router.push('/dashboard');
   };
@@ -102,6 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     authService.logout(); // clears localStorage tokens
+    setTenantIdSync(null);
     setUser(null);
     router.push('/auth/login');
   }, [router]);
@@ -110,6 +121,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (isAuthDisabled()) return;
     try {
       const profile = await authService.getProfile();
+      if (profile.tenant_id?.trim()) {
+        setTenantIdSync(profile.tenant_id);
+      }
       setUser(profile);
     } catch {
       // ignore
