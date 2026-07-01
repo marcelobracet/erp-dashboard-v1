@@ -13,6 +13,7 @@ import {
   type Theme,
 } from "@/lib/theme";
 import { getSupportWhatsAppHref } from "@/lib/support";
+import { SubscriptionGate } from "@/components/billing/SubscriptionGate";
 
 interface NavItem {
   name: string;
@@ -617,6 +618,8 @@ export default function DashboardLayout({
         {/* Page Content */}
         <main className="p-4 lg:p-8">{children}</main>
       </div>
+
+      <SubscriptionGate />
     </div>
   );
 }

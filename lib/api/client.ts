@@ -4,6 +4,7 @@ import axios, {
   type AxiosRequestConfig,
   type InternalAxiosRequestConfig,
 } from 'axios';
+import { emitSubscriptionRequired } from '@/lib/billing/events';
 import { API_CONFIG, API_TIMEOUT } from './config';
 
 export interface ApiError {
@@ -11,15 +12,32 @@ export interface ApiError {
   status?: number;
 }
 
-/** Monta URL absoluta; evita `/api/v1/api/v1/...` quando `baseURL` já termina em `/api/v1`. */
-export function buildFullApiUrl(baseURL: string, endpoint: string): string {
-  const base = baseURL.replace(/\/+$/, '');
-  let path = endpoint;
-  if (endpoint.startsWith('/api/v1/') && base.endsWith('/api/v1')) {
-    const rest = endpoint.replace(/^\/api\/v1\/?/, '');
-    path = rest.startsWith('/') ? rest : `/${rest}`;
+/** Parses Gin / AbacatePay-style JSON error bodies: { error: string } or { message: string }. */
+export function extractApiErrorMessage(data: unknown): string | undefined {
+  if (data == null || typeof data !== "object") return undefined;
+  const d = data as Record<string, unknown>;
+  if (typeof d.message === "string" && d.message.trim() !== "") {
+    return d.message;
   }
-  return `${base}${path}`;
+  if (typeof d.error === "string" && d.error.trim() !== "") {
+    return d.error;
+  }
+  if (d.error != null && typeof d.error === "object") {
+    const nested = d.error as Record<string, unknown>;
+    if (typeof nested.message === "string" && nested.message.trim() !== "") {
+      return nested.message;
+    }
+  }
+  return undefined;
+}
+
+export function isApiError(e: unknown): e is ApiError {
+  return (
+    typeof e === "object" &&
+    e !== null &&
+    "message" in e &&
+    typeof (e as ApiError).message === "string"
+  );
 }
 
 class ApiClient {
@@ -91,9 +109,25 @@ class ApiClient {
           }
         }
 
+        if (error.response?.status === 403) {
+          this.handleSubscriptionRequired(error);
+        }
+
         return Promise.reject(this.normalizeError(error));
       }
     );
+  }
+
+  /** Opens SubscriptionGate when the API blocks access (trial ended / inactive plan). */
+  private handleSubscriptionRequired(error: AxiosError): void {
+    const data = error.response?.data;
+    if (data == null || typeof data !== 'object') return;
+    const body = data as Record<string, unknown>;
+    const code = body.code ?? body.error;
+    if (code !== 'subscription_required') return;
+    const trialEndsAt =
+      typeof body.trial_ends_at === 'string' ? body.trial_ends_at : null;
+    emitSubscriptionRequired({ trialEndsAt });
   }
 
   private async performRefresh(): Promise<string> {
@@ -101,14 +135,10 @@ class ApiClient {
     if (!refreshToken) throw new Error('No refresh token');
 
     // Raw axios call — bypasses this instance's interceptors
-    const refreshUrl = buildFullApiUrl(
-      this.axios.defaults.baseURL || API_CONFIG.baseURL,
-      API_CONFIG.endpoints.auth.refresh,
-    );
     const { data } = await axios.post<{
       access_token: string;
       refresh_token?: string;
-    }>(refreshUrl, {
+    }>(`${API_CONFIG.baseURL}${API_CONFIG.endpoints.auth.refresh}`, {
       refresh_token: refreshToken,
     });
 
@@ -118,57 +148,42 @@ class ApiClient {
     return data.access_token;
   }
 
-  /**
-   * Se `NEXT_PUBLIC_API_URL` já termina em `/api/v1`, evita `/api/v1/api/v1/...` (404).
-   */
-  private resolveEndpoint(endpoint: string): string {
-    const base = (this.axios.defaults.baseURL || '').replace(/\/+$/, '');
-    if (!endpoint.startsWith('/api/v1/')) return endpoint;
-    if (base.endsWith('/api/v1')) {
-      const rest = endpoint.replace(/^\/api\/v1\/?/, '');
-      return rest.startsWith('/') ? rest : `/${rest}`;
-    }
-    return endpoint;
-  }
-
   private normalizeError(error: AxiosError): ApiError {
-    const data = error.response?.data as
-      | Record<string, unknown>
-      | undefined;
-    const details =
-      typeof data?.details === 'string'
-        ? data.details
-        : data?.details != null
-          ? JSON.stringify(data.details)
-          : undefined;
-    const base =
-      (data?.message as string | undefined) ??
-      (data?.error as string | undefined) ??
+    const data = error.response?.data;
+    let message =
+      extractApiErrorMessage(data) ??
       error.message ??
       'Ocorreu um erro';
-    const message = details ? `${base}: ${details}` : base;
+    if (
+      data != null &&
+      typeof data === 'object' &&
+      (data as Record<string, unknown>).code === 'subscription_required' &&
+      typeof (data as Record<string, unknown>).message === 'string'
+    ) {
+      message = (data as Record<string, unknown>).message as string;
+    }
     return { message, status: error.response?.status };
   }
 
   // ── Convenience wrappers ─────────────────────────────────────────────
 
   async get<T>(endpoint: string, config?: AxiosRequestConfig): Promise<T> {
-    const { data } = await this.axios.get<T>(this.resolveEndpoint(endpoint), config);
+    const { data } = await this.axios.get<T>(endpoint, config);
     return data;
   }
 
   async post<T>(endpoint: string, payload?: unknown): Promise<T> {
-    const { data } = await this.axios.post<T>(this.resolveEndpoint(endpoint), payload);
+    const { data } = await this.axios.post<T>(endpoint, payload);
     return data;
   }
 
   async put<T>(endpoint: string, payload?: unknown): Promise<T> {
-    const { data } = await this.axios.put<T>(this.resolveEndpoint(endpoint), payload);
+    const { data } = await this.axios.put<T>(endpoint, payload);
     return data;
   }
 
   async delete<T>(endpoint: string): Promise<T> {
-    const { data } = await this.axios.delete<T>(this.resolveEndpoint(endpoint));
+    const { data } = await this.axios.delete<T>(endpoint);
     return data;
   }
 

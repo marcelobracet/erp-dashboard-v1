@@ -1,0 +1,55 @@
+graph TB
+    subgraph "Frontend Layer (Vercel)"
+        LP["🌐 Landing Page<br/>Next.js + Vercel"]
+        Dashboard["📊 Dashboard<br/>Next.js + Vercel<br/>Port: 3000"]
+    end
+    
+    subgraph "Google Cloud Platform"
+        subgraph "Cloud Load Balancer & CDN"
+            LB["⚖️ Cloud Load Balancer<br/>+ Cloud CDN"]
+        end
+        
+        subgraph "Compute Layer"
+            CR["☁️ Cloud Run<br/>Backend API<br/>Go + Docker"]
+        end
+        
+        subgraph "Data Layer"
+            CSQL["🗄️ Cloud SQL<br/>PostgreSQL 15<br/>Private IP"]
+            REPLICA["📡 Read Replica<br/>HA Configuration"]
+        end
+        
+        subgraph "Security & Secrets"
+            SM["🔐 Secret Manager<br/>JWT Keys<br/>DB Credentials"]
+            IAM["👤 IAM Roles<br/>Service Accounts"]
+        end
+        
+        subgraph "CI/CD Pipeline"
+            GH["🔄 GitHub Actions"]
+            AR["📦 Artifact Registry<br/>Docker Images"]
+        end
+        
+        subgraph "Observability"
+            CL["📝 Cloud Logging"]
+            CM["📈 Cloud Monitoring"]
+            CT["⏱️ Cloud Trace"]
+        end
+    end
+    
+    subgraph "External Services"
+        GITHUB["🐙 GitHub Repository<br/>erp-api"]
+    end
+    
+    Dashboard -->|HTTPS| LB
+    LP -->|HTTPS| LB
+    LB -->|Route| CR
+    CR -->|Private SQL Conn| CSQL
+    CSQL -.->|Replication| REPLICA
+    CR -->|Read Secrets| SM
+    CR -->|Attach Metrics| CM
+    CR -->|Stream Logs| CL
+    CR -->|Traces| CT
+    GITHUB -->|Webhook| GH
+    GH -->|Build & Push| AR
+    AR -->|Deploy| CR
+    SM -->|IAM Permissions| IAM
+    IAM -->|Control Access| CR

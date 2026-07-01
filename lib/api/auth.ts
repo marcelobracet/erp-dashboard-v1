@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { apiClient, buildFullApiUrl, type ApiError } from './client';
+import { apiClient, type ApiError } from './client';
 import { API_CONFIG } from './config';
 
 export interface LoginRequest {
@@ -58,7 +58,7 @@ export const authService = {
   async login(credentials: LoginRequest): Promise<LoginResponse> {
     try {
       const { data } = await axios.post<LoginResponse>(
-        buildFullApiUrl(API_CONFIG.baseURL, API_CONFIG.endpoints.auth.login),
+        `${API_CONFIG.baseURL}${API_CONFIG.endpoints.auth.login}`,
         credentials,
         { headers: { 'Content-Type': 'application/json' } }
       );

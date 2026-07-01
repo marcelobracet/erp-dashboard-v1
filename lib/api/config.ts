@@ -48,6 +48,11 @@ export const API_CONFIG = {
     reports: {
       export: "/api/v1/reports/export",
     },
+    billing: {
+      status: "/api/v1/billing/status",
+      sync: "/api/v1/billing/sync",
+      checkout: "/api/v1/billing/checkout",
+    },
   },
 } as const;
 

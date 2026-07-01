@@ -17,8 +17,6 @@ export interface BarChartDatum {
   label: string;
   approved: number;
   rejected: number;
-  /** Orçamentos em aberto (pendente / rascunho / enviado), pelo mês de criação. */
-  open: number;
 }
 
 function ChartTooltip({
@@ -79,7 +77,7 @@ export function BarChart({
   }
 
   return (
-    <div className="w-full" style={{ height }} aria-label="Aprovados, rejeitados e em aberto">
+    <div className="w-full" style={{ height }} aria-label="Aprovados vs rejeitados">
       <ResponsiveContainer width="100%" height="100%">
         <ReBarChart data={data} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
           <CartesianGrid stroke="var(--color-glass-10)" strokeDasharray="4 4" vertical={false} />
@@ -97,25 +95,18 @@ export function BarChart({
             wrapperStyle={{ color: 'var(--color-text-60)', fontSize: 12 }}
           />
           <Bar
-            dataKey="open"
-            name="Em aberto"
-            fill="rgba(251, 191, 36, 0.85)"
-            radius={[4, 4, 0, 0]}
-            maxBarSize={28}
-          />
-          <Bar
             dataKey="approved"
             name="Aprovados"
             fill="var(--color-accent-90)"
             radius={[4, 4, 0, 0]}
-            maxBarSize={28}
+            maxBarSize={36}
           />
           <Bar
             dataKey="rejected"
             name="Rejeitados"
             fill="rgba(248, 113, 113, 0.75)"
             radius={[4, 4, 0, 0]}
-            maxBarSize={28}
+            maxBarSize={36}
           />
         </ReBarChart>
       </ResponsiveContainer>

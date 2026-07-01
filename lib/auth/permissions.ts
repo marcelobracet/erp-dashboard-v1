@@ -89,38 +89,11 @@ function isRolePermissionsMap(input: unknown): input is RolePermissionsMap {
 }
 
 /**
- * Busca um mapa de permissões do backend.
- * Implementação tolerante: retorna `null` em qualquer erro/ausência de endpoint,
- * mantendo o app funcional com `DEFAULT_ROLE_PERMISSIONS`.
+ * Permissões por role — o backend valida via JWT (`resource:action`).
+ * Não há endpoint HTTP separado; evita chamadas inválidas a `/permissions`.
  */
 export async function fetchPermissionsFromApi(
-  accessToken: string,
+  _accessToken: string,
 ): Promise<RolePermissionsMap | null> {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
-  if (!baseUrl) return null;
-
-  try {
-    const res = await fetch(`${baseUrl.replace(/\/$/, "")}/permissions`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      cache: "no-store",
-    });
-
-    if (!res.ok) return null;
-
-    const data: unknown = await res.json();
-
-    const maybeMap =
-      data && typeof data === "object" && "rolePermissions" in (data as any)
-        ? (data as any).rolePermissions
-        : data;
-
-    if (!isRolePermissionsMap(maybeMap)) return null;
-
-    return maybeMap;
-  } catch {
-    return null;
-  }
+  return null;
 }

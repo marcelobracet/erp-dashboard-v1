@@ -1,0 +1,46 @@
+sequenceDiagram
+    participant User as 👤 Usuário<br/>Browser
+    participant LP as 🌐 Landing Page<br/>Vercel
+    participant Dashboard as 📊 Dashboard<br/>Vercel
+    participant LB as ⚖️ Load Balancer<br/>Cloud CDN
+    participant CR as ☁️ Cloud Run<br/>API (Go)
+    participant CSQL as 🗄️ Cloud SQL<br/>PostgreSQL
+    participant SM as 🔐 Secret Manager
+
+    User ->> LP: 1. Visita LP
+    LP ->> LB: 2. Carrega assets<br/>(CDN cached)
+    LB ->> LP: 3. Retorna assets<br/>(fast, cached)
+    
+    User ->> Dashboard: 4. Acessa Dashboard<br/>/auth/login
+    Dashboard ->> Dashboard: 5. Form submetido<br/>(email + password)
+    Dashboard ->> CR: 6. POST /api/v1/auth/login<br/>JSON body
+    CR ->> SM: 7. Fetch JWT Secret<br/>(Secret Manager)
+    SM ->> CR: 8. Retorna JWT Secret
+    CR ->> CSQL: 9. Query users table<br/>SELECT * FROM users<br/>WHERE email = ?
+    CSQL ->> CR: 10. User record<br/>(password hash)
+    CR ->> CR: 11. Verify password<br/>bcrypt.Compare()
+    CR ->> CR: 12. Generate JWT tokens<br/>(access + refresh)
+    CR ->> Dashboard: 13. Retorna tokens +<br/>user data<br/>{access_token, refresh_token}
+    
+    Dashboard ->> Dashboard: 14. Store JWT em<br/>http-only cookie<br/>(NextAuth session)
+    Dashboard ->> Dashboard: 15. Redirect /dashboard
+    
+    User ->> Dashboard: 16. Clica em "Produtos"
+    Dashboard ->> Dashboard: 17. useSession() →<br/>JWT from cookie
+    Dashboard ->> CR: 18. GET /api/v1/products<br/>Authorization:<br/>Bearer {access_token}
+    
+    CR ->> SM: 19. Validate JWT<br/>(fetch public key)
+    SM ->> CR: 20. JWT validation OK
+    CR ->> CSQL: 21. SELECT * FROM products<br/>WHERE tenant_id = ?
+    CSQL ->> CR: 22. Array[Product]
+    CR ->> LB: 23. Return JSON<br/>{data: products[]}
+    LB ->> Dashboard: 24. Response cached<br/>(CDN)
+    Dashboard ->> Dashboard: 25. Render ProductList<br/>Component
+    Dashboard ->> User: 26. Display products
+    
+    User ->> Dashboard: 27. Cria novo orçamento
+    Dashboard ->> CR: 28. POST /api/v1/quotes<br/>JSON body<br/>(lineItems[], clientId)
+    CR ->> CSQL: 29. INSERT into quotes<br/>+ INSERT quote_items
+    CSQL ->> CR: 30. Quote created<br/>(ID: 12345)
+    CR ->> Dashboard: 31. Return new quote<br/>{id, status, total}
+    Dashboard ->> User: 32. Toast: "Orçamento criado!"
