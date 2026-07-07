@@ -40,10 +40,41 @@ export default function QuotePreview({ quote }: { quote: Quote }) {
     const byId = new Map<string, QuoteItem>();
     for (const it of items) byId.set(it.id, it);
 
+    const assignByPosition = (): Map<number, QuoteItem[]> | null => {
+      if (!quote.environments?.length || items.length === 0) return null;
+      let resolved = 0;
+      for (const env of quote.environments) {
+        for (const id of env.item_ids ?? []) {
+          if (byId.has(id)) resolved++;
+        }
+      }
+      if (resolved > 0) return null;
+      const slots = new Map<number, QuoteItem[]>();
+      let cursor = 0;
+      quote.environments.forEach((env, idx) => {
+        const count = (env.item_ids ?? []).length;
+        if (count <= 0) {
+          slots.set(idx, []);
+          return;
+        }
+        slots.set(idx, items.slice(cursor, cursor + count));
+        cursor += count;
+      });
+      if (cursor === 0) return null;
+      return slots;
+    };
+
+    const positional = assignByPosition();
+
     // Prefer explicit environments ordering
     if (quote.environments && quote.environments.length > 0) {
-      return quote.environments.map((env) => {
-        const envItems = env.item_ids.map((id) => byId.get(id)).filter(Boolean) as QuoteItem[];
+      return quote.environments.map((env, idx) => {
+        let envItems = (env.item_ids ?? [])
+          .map((id) => byId.get(id))
+          .filter(Boolean) as QuoteItem[];
+        if (envItems.length === 0 && positional?.has(idx)) {
+          envItems = positional.get(idx) ?? [];
+        }
         const subtotal = envItems.reduce((acc, it) => acc + Number(it.subtotal ?? 0), 0);
         return { id: env.id, name: env.name, items: envItems, subtotal };
       });

@@ -2,6 +2,7 @@ import { apiClient } from "./client";
 import { API_CONFIG } from "./config";
 import { getTenantIdSync } from '@/lib/auth/tenant';
 import { isLocalProductsEnabled, isLocalQuotesEnabled } from '@/lib/featureFlags';
+import { quoteMatchesListTab, type QuoteListTab } from '@/lib/utils/quoteListTab';
 import { localProductStore } from '@/lib/local/products';
 import { localQuoteStore } from '@/lib/local/quotes';
 
@@ -145,6 +146,12 @@ type ProductsListResponse = {
   offset?: number;
 };
 
+export type QuoteListParams = {
+  view?: string;
+  limit?: number;
+  offset?: number;
+};
+
 type QuotesListResponse = {
   quotes: Quote[];
   total?: number;
@@ -283,15 +290,27 @@ export const productService = {
 };
 
 export const quoteService = {
-  list: async () => {
-    if (isLocalQuotesEnabled()) return localQuoteStore.list();
+  list: async (params?: QuoteListParams) => {
+    if (isLocalQuotesEnabled()) {
+      const all = localQuoteStore.list();
+      const view = params?.view?.trim();
+      if (view && view !== 'todos') {
+        return all.filter((q) => quoteMatchesListTab(q, view as QuoteListTab));
+      }
+      return all;
+    }
     try {
+      const url = buildUrl(API_CONFIG.endpoints.quotes.list, {
+        view: params?.view,
+        limit: params?.limit,
+        offset: params?.offset,
+      });
       const res = await apiClient.get<
         | Quote[]
         | PaginatedResponse<Quote>
         | QuotesListResponse
         | { error?: string; message?: string }
-      >(API_CONFIG.endpoints.quotes.list);
+      >(url);
 
       if (!Array.isArray(res) && isErrorEnvelope(res) && !('quotes' in (res as any)) && !('data' in (res as any))) {
         const msg = (res as any).error ?? (res as any).message;
@@ -300,7 +319,12 @@ export const quoteService = {
 
       return unwrapQuotesList(res as Quote[] | PaginatedResponse<Quote> | QuotesListResponse);
     } catch {
-      return localQuoteStore.list();
+      const all = localQuoteStore.list();
+      const view = params?.view?.trim();
+      if (view && view !== 'todos') {
+        return all.filter((q) => quoteMatchesListTab(q, view as QuoteListTab));
+      }
+      return all;
     }
   },
   getById: async (id: string) => {

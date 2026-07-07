@@ -18,7 +18,7 @@ const COLUMNS: {
 }[] = [
   {
     status: 'backlog',
-    title: 'Melhorias futuras',
+    title: 'Aderidas ao roteiro',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -80,6 +80,9 @@ function RoadmapCard({
       {item.description ? (
         <p className="text-sm text-text-60 line-clamp-4 whitespace-pre-wrap">{item.description}</p>
       ) : null}
+      {!isAdmin ? (
+        <p className="text-[10px] uppercase tracking-wide text-text-60 pt-1">Somente leitura</p>
+      ) : null}
       {isAdmin ? (
         <div className="pt-2 border-t border-glass-10 space-y-2">
           <label className="sr-only" htmlFor={`status-${item.id}`}>
@@ -92,7 +95,7 @@ function RoadmapCard({
             onChange={(e) => onStatusChange(item.id, e.target.value as RoadmapItemStatus)}
             className="w-full text-xs rounded-xl border border-glass-10 bg-glass-5 text-text-80 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent-20"
           >
-            <option value="backlog">Melhorias futuras</option>
+            <option value="backlog">Aderidas ao roteiro</option>
             <option value="in_progress">Em andamento</option>
             <option value="done">Finalizadas</option>
           </select>
@@ -313,7 +316,7 @@ function AdminItemModal({
                 onChange={(e) => setStatus(e.target.value as RoadmapItemStatus)}
                 className="w-full px-4 py-3 rounded-xl border border-glass-10 bg-glass-5 text-foreground focus:outline-none focus:ring-2 focus:ring-accent-20"
               >
-                <option value="backlog">Melhorias futuras</option>
+                <option value="backlog">Aderidas ao roteiro</option>
                 <option value="in_progress">Em andamento</option>
                 <option value="done">Finalizadas</option>
               </select>
@@ -467,8 +470,8 @@ function IdearioContent() {
               Ideário
             </h1>
             <p className="text-text-60 text-sm sm:text-base max-w-xl">
-              Acompanhe o que estamos desenvolvendo. Envie sugestões para o time — elas são registradas
-              e encaminhadas por e-mail.
+              Envie ideias e acompanhe o que foi aderido ao produto: melhorias no roteiro, o que está em
+              andamento e o que já foi entregue.
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2 shrink-0">
@@ -561,12 +564,12 @@ function IdearioContent() {
 
         {!isAdmin ? (
           <p className="mt-8 text-xs text-text-60 text-center sm:text-left">
-            O roteiro é mantido pelo time de desenvolvimento. Use &quot;Enviar sugestão&quot; para
-            contribuir com ideias.
+            Você pode enviar sugestões e acompanhar aqui o status das melhorias aderidas. Apenas o time
+            de produto move os cards entre as colunas.
           </p>
         ) : (
           <p className="mt-8 text-xs text-text-60 text-center sm:text-left">
-            Administradores podem criar, editar e posicionar os cards do produto.
+            Como administrador, você publica no quadro as ideias aderidas e atualiza o andamento.
           </p>
         )}
       </div>

@@ -166,8 +166,12 @@ function buildPayload(
     payment_method: payment.paymentMethod,
     payment_discount_enabled: payment.paymentDiscountEnabled,
     discount_percent: payment.discountPercent,
-    payment_installments_enabled: payment.paymentInstallmentsEnabled,
-    installment_count: payment.installmentCount,
+    payment_installments_enabled:
+      payment.paymentMethod === 'credit' && payment.paymentInstallmentsEnabled,
+    installment_count:
+      payment.paymentMethod === 'credit' && payment.paymentInstallmentsEnabled
+        ? payment.installmentCount
+        : 0,
     discount: legacyDisc,
     items: itemsWithProduct,
     client_id,
@@ -268,6 +272,13 @@ export default function QuoteBuilder({
     );
     setDiscountFixedBrl(discountFixedFromLoadedQuote(initialQuote));
   }, [initialQuote]);
+
+  useEffect(() => {
+    if (paymentMethod !== 'credit') {
+      setPaymentInstallmentsEnabled(false);
+      setInstallmentCount(0);
+    }
+  }, [paymentMethod]);
 
   const paymentDraft = useMemo(
     (): PaymentDraft => ({
@@ -645,9 +656,13 @@ export default function QuoteBuilder({
             💳
           </span>
           <h2 className="text-sm font-bold uppercase tracking-wide text-accent">
-            Condições de pagamento
+            Condições comerciais (indicativas)
           </h2>
         </div>
+        <p className="text-xs text-text-60 leading-relaxed max-w-2xl">
+          Forma de pagamento e descontos servem como referência na proposta. O acordo
+          financeiro definitivo costuma ser fechado após aprovação do orçamento pelo cliente.
+        </p>
 
         <div className="flex flex-wrap gap-2">
           {PAYMENT_METHODS.map((m) => {
@@ -676,7 +691,7 @@ export default function QuoteBuilder({
           })}
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className={`grid grid-cols-1 gap-4 ${paymentMethod === 'credit' ? 'sm:grid-cols-2' : ''}`}>
           <div className="rounded-2xl border border-glass-10 bg-glass-5 p-4">
             <div className="flex items-start justify-between gap-3">
               <span className="text-xs font-semibold uppercase tracking-wide text-text-60">
@@ -730,49 +745,51 @@ export default function QuoteBuilder({
             )}
           </div>
 
-          <div className="rounded-2xl border border-glass-10 bg-glass-5 p-4">
-            <div className="flex items-start justify-between gap-3">
-              <span className="text-xs font-semibold uppercase tracking-wide text-text-60">
-                Parcelas
-              </span>
-              <Switch
-                checked={paymentInstallmentsEnabled}
-                onCheckedChange={setPaymentInstallmentsEnabled}
-                aria-label="Informar parcelamento"
-                size="sm"
-              />
+          {paymentMethod === 'credit' ? (
+            <div className="rounded-2xl border border-glass-10 bg-glass-5 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <span className="text-xs font-semibold uppercase tracking-wide text-text-60">
+                  Parcelas
+                </span>
+                <Switch
+                  checked={paymentInstallmentsEnabled}
+                  onCheckedChange={setPaymentInstallmentsEnabled}
+                  aria-label="Informar parcelamento"
+                  size="sm"
+                />
+              </div>
+              <div className="mt-4 flex items-center justify-center gap-2">
+                <button
+                  type="button"
+                  disabled={!paymentInstallmentsEnabled || installmentCount <= 0}
+                  onClick={() =>
+                    setInstallmentCount((c) => Math.max(0, c - 1))
+                  }
+                  className="rounded-lg border border-glass-10 px-3 py-2 text-sm disabled:opacity-40"
+                  aria-label="Menos parcelas"
+                >
+                  −
+                </button>
+                <span className="min-w-16 text-center text-4xl font-bold tabular-nums text-foreground">
+                  {paymentInstallmentsEnabled ? installmentCount : 0}
+                </span>
+                <button
+                  type="button"
+                  disabled={!paymentInstallmentsEnabled}
+                  onClick={() =>
+                    setInstallmentCount((c) => Math.min(48, c + 1))
+                  }
+                  className="rounded-lg border border-glass-10 px-3 py-2 text-sm disabled:opacity-40"
+                  aria-label="Mais parcelas"
+                >
+                  +
+                </button>
+              </div>
+              <p className="mt-2 text-center text-xs text-text-60">
+                0 = à vista · máx. 48x
+              </p>
             </div>
-            <div className="mt-4 flex items-center justify-center gap-2">
-              <button
-                type="button"
-                disabled={!paymentInstallmentsEnabled || installmentCount <= 0}
-                onClick={() =>
-                  setInstallmentCount((c) => Math.max(0, c - 1))
-                }
-                className="rounded-lg border border-glass-10 px-3 py-2 text-sm disabled:opacity-40"
-                aria-label="Menos parcelas"
-              >
-                −
-              </button>
-              <span className="min-w-16 text-center text-4xl font-bold tabular-nums text-foreground">
-                {paymentInstallmentsEnabled ? installmentCount : 0}
-              </span>
-              <button
-                type="button"
-                disabled={!paymentInstallmentsEnabled}
-                onClick={() =>
-                  setInstallmentCount((c) => Math.min(48, c + 1))
-                }
-                className="rounded-lg border border-glass-10 px-3 py-2 text-sm disabled:opacity-40"
-                aria-label="Mais parcelas"
-              >
-                +
-              </button>
-            </div>
-            <p className="mt-2 text-center text-xs text-text-60">
-              0 = à vista · máx. 48x
-            </p>
-          </div>
+          ) : null}
         </div>
       </div>
 

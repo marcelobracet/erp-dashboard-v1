@@ -4,7 +4,6 @@ import axios, {
   type AxiosRequestConfig,
   type InternalAxiosRequestConfig,
 } from 'axios';
-import { emitSubscriptionRequired } from '@/lib/billing/events';
 import { API_CONFIG, API_TIMEOUT } from './config';
 
 export interface ApiError {
@@ -109,25 +108,9 @@ class ApiClient {
           }
         }
 
-        if (error.response?.status === 403) {
-          this.handleSubscriptionRequired(error);
-        }
-
         return Promise.reject(this.normalizeError(error));
       }
     );
-  }
-
-  /** Opens SubscriptionGate when the API blocks access (trial ended / inactive plan). */
-  private handleSubscriptionRequired(error: AxiosError): void {
-    const data = error.response?.data;
-    if (data == null || typeof data !== 'object') return;
-    const body = data as Record<string, unknown>;
-    const code = body.code ?? body.error;
-    if (code !== 'subscription_required') return;
-    const trialEndsAt =
-      typeof body.trial_ends_at === 'string' ? body.trial_ends_at : null;
-    emitSubscriptionRequired({ trialEndsAt });
   }
 
   private async performRefresh(): Promise<string> {
@@ -150,18 +133,10 @@ class ApiClient {
 
   private normalizeError(error: AxiosError): ApiError {
     const data = error.response?.data;
-    let message =
+    const message =
       extractApiErrorMessage(data) ??
       error.message ??
       'Ocorreu um erro';
-    if (
-      data != null &&
-      typeof data === 'object' &&
-      (data as Record<string, unknown>).code === 'subscription_required' &&
-      typeof (data as Record<string, unknown>).message === 'string'
-    ) {
-      message = (data as Record<string, unknown>).message as string;
-    }
     return { message, status: error.response?.status };
   }
 

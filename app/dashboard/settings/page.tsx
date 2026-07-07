@@ -10,6 +10,7 @@ import { settingsService, TenantSettingsResponse } from "@/lib/api/services";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/contexts/AuthContext";
 import UsersManagement from "@/components/settings/UsersManagement";
+import BillingSettings from "@/components/settings/BillingSettings";
 
 type TenantSettings = TenantSettingsResponse;
 
@@ -289,14 +290,7 @@ function SettingsContent() {
           </div>
         )}
 
-        {activeTab === "plano" && (
-          <div className="app-card p-12 text-center rounded-2xl border border-glass-10">
-            <p className="text-foreground font-medium">Plano e faturamento</p>
-            <p className="text-sm text-text-60 mt-2 max-w-md mx-auto">
-              Em breve você poderá acompanhar assinatura e faturas por aqui.
-            </p>
-          </div>
-        )}
+        {activeTab === "plano" && <BillingSettings />}
 
         {activeTab === "empresa" && (
           <>
