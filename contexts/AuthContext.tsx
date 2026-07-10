@@ -21,6 +21,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  patchUser: (partial: Partial<UserProfile>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -88,19 +89,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // authService.login stores the token in localStorage automatically.
-    const data = await authService.login({ email, password });
+    await authService.login({ email, password });
 
-    const profile: UserProfile = {
-      id: data.user.id,
-      email: data.user.email,
-      name: data.user.name,
-      role: data.user.role,
-      tenant_id: data.user.tenant_id,
-    };
-
-    if (data.user.tenant_id?.trim()) {
-      setTenantIdSync(data.user.tenant_id);
+    const profile = await authService.getProfile();
+    if (profile.tenant_id?.trim()) {
+      setTenantIdSync(profile.tenant_id);
     }
     setUser(profile);
     router.push('/dashboard');
@@ -116,6 +109,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     router.push('/auth/login');
   }, [router]);
+
+  const patchUser = useCallback((partial: Partial<UserProfile>) => {
+    setUser((prev) => (prev ? { ...prev, ...partial } : prev));
+  }, []);
 
   const refreshUser = async () => {
     if (isAuthDisabled()) return;
@@ -140,6 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         logout,
         refreshUser,
+        patchUser,
       }}
     >
       {children}

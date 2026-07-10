@@ -1,6 +1,7 @@
 'use client';
 
-import React, { ReactNode, useState, useEffect } from 'react';
+import React, { ReactNode } from 'react';
+import { useIsClient } from '@/hooks/useIsClient';
 import { usePermissions } from '@/hooks/usePermissions';
 import { UserRole } from '@/hooks/usePermissions';
 
@@ -20,13 +21,9 @@ export function ProtectedComponent({
   fallback = null 
 }: ProtectedComponentProps) {
   const { hasPermission, hasRole } = usePermissions();
-  const [mounted, setMounted] = useState(false);
+  const isClient = useIsClient();
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
+  if (!isClient) {
     return <>{children}</>;
   }
 

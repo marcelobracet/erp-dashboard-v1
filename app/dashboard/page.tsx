@@ -8,15 +8,19 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { LineChart } from "@/components/dashboard/LineChart";
 import { BarChart } from "@/components/dashboard/BarChart";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { getMockDashboardData } from "@/lib/mock/dashboard";
-import { getDashboardMetrics, type DashboardMetrics } from "@/lib/mock/dashboardMetrics";
+import { type DashboardMetrics } from "@/lib/mock/dashboardMetrics";
+import { getDashboardMetricsFromApi } from "@/lib/dashboard/fromApi";
+import { quoteService, clientService } from "@/lib/api/services";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
 
 function DashboardContent() {
   const { user } = useAuth();
 
   const [loading, setLoading] = useState(true);
-  const [metricsState, setMetricsState] = useState<DashboardMetrics | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [metricsState, setMetricsState] = useState<DashboardMetrics | null>(
+    null,
+  );
 
   const emptyMetrics = useMemo<DashboardMetrics>(
     () => ({
@@ -44,7 +48,7 @@ function DashboardContent() {
         newClientsThisMonth: [],
       },
     }),
-    []
+    [],
   );
 
   const metrics = metricsState ?? emptyMetrics;
@@ -54,11 +58,22 @@ function DashboardContent() {
     (async () => {
       try {
         setLoading(true);
-        // Today it's mock; tomorrow it can be an API call.
-        const mock = await Promise.resolve(getMockDashboardData());
-        const next = getDashboardMetrics(mock);
+        setError(null);
+        const [quotes, clients] = await Promise.all([
+          quoteService.list({ view: "todos", limit: 500 }),
+          clientService.list(),
+        ]);
+        const next = getDashboardMetricsFromApi(quotes, clients);
         if (!mounted) return;
         setMetricsState(next);
+      } catch (e) {
+        if (!mounted) return;
+        setError(
+          e instanceof Error
+            ? e.message
+            : "Não foi possível carregar os indicadores.",
+        );
+        setMetricsState(null);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -91,10 +106,14 @@ function DashboardContent() {
           <h1 className="text-3xl font-bold text-foreground">
             Bem-vindo, {user?.name || user?.email}!
           </h1>
-          <p className="text-text-80">
-            Visão comercial do mês (dados mockados por enquanto)
-          </p>
+          <p className="text-text-80">Visão comercial do mês</p>
         </div>
+
+        {error ? (
+          <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-300">
+            {error}
+          </div>
+        ) : null}
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
           <StatCard
@@ -112,8 +131,18 @@ function DashboardContent() {
             }
             right={
               <div className="h-11 w-11 rounded-xl bg-accent-15 text-accent-muted flex items-center justify-center">
-                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                <svg
+                  className="h-6 w-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
                 </svg>
               </div>
             }
@@ -134,8 +163,18 @@ function DashboardContent() {
             }
             right={
               <div className="h-11 w-11 rounded-xl bg-accent-15 text-accent-muted flex items-center justify-center">
-                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                <svg
+                  className="h-6 w-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
                 </svg>
               </div>
             }
@@ -156,8 +195,18 @@ function DashboardContent() {
             }
             right={
               <div className="h-11 w-11 rounded-xl bg-accent-15 text-accent-muted flex items-center justify-center">
-                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-10V6m0 12v-2m9-4a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <svg
+                  className="h-6 w-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-10V6m0 12v-2m9-4a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
                 </svg>
               </div>
             }
@@ -178,8 +227,18 @@ function DashboardContent() {
             }
             right={
               <div className="h-11 w-11 rounded-xl bg-accent-15 text-accent-muted flex items-center justify-center">
-                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 14l2-2 4 4m0 0l2-2m-2 2V7" />
+                <svg
+                  className="h-6 w-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 14l2-2 4 4m0 0l2-2m-2 2V7"
+                  />
                 </svg>
               </div>
             }
@@ -190,24 +249,36 @@ function DashboardContent() {
           <div className="app-card p-6">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h2 className="text-lg font-semibold text-foreground">Orçamentos (últimos 30 dias)</h2>
-                <p className="text-sm text-text-60">Volume diário (sem rascunhos)</p>
+                <h2 className="text-lg font-semibold text-foreground">
+                  Orçamentos (últimos 30 dias)
+                </h2>
+                <p className="text-sm text-text-60">
+                  Volume diário (sem rascunhos)
+                </p>
               </div>
             </div>
             <div className="mt-5">
-              <LineChart data={metrics.series.quotesLast30Days} loading={loading} />
+              <LineChart
+                data={metrics.series.quotesLast30Days}
+                loading={loading}
+              />
             </div>
           </div>
 
           <div className="app-card p-6">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h2 className="text-lg font-semibold text-foreground">Aprovados vs rejeitados</h2>
+                <h2 className="text-lg font-semibold text-foreground">
+                  Aprovados vs rejeitados
+                </h2>
                 <p className="text-sm text-text-60">Últimos 6 meses</p>
               </div>
             </div>
             <div className="mt-5">
-              <BarChart data={metrics.series.approvedVsRejectedLast6Months} loading={loading} />
+              <BarChart
+                data={metrics.series.approvedVsRejectedLast6Months}
+                loading={loading}
+              />
             </div>
           </div>
         </div>
@@ -216,14 +287,27 @@ function DashboardContent() {
           <div className="app-card p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h2 className="text-lg font-semibold text-foreground">Novos clientes no mês</h2>
+                <h2 className="text-lg font-semibold text-foreground">
+                  Novos clientes no mês
+                </h2>
                 <p className="mt-1 text-sm text-text-60">
-                  {metrics.kpis.newClientsThisMonth} novos clientes (mais recentes abaixo)
+                  {metrics.kpis.newClientsThisMonth} novos clientes (mais
+                  recentes abaixo)
                 </p>
               </div>
               <div className="h-11 w-11 rounded-xl bg-accent-15 text-accent-muted flex items-center justify-center">
-                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                <svg
+                  className="h-6 w-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
                 </svg>
               </div>
             </div>
@@ -236,15 +320,25 @@ function DashboardContent() {
                       key={i}
                       className="rounded-lg border border-glass-10 bg-glass-5 px-4 py-3"
                     >
-                      <Skeleton variant="text" width={220} aria-label="Carregando" />
+                      <Skeleton
+                        variant="text"
+                        width={220}
+                        aria-label="Carregando"
+                      />
                       <div className="mt-2">
-                        <Skeleton variant="text" width={120} aria-label="Carregando" />
+                        <Skeleton
+                          variant="text"
+                          width={120}
+                          aria-label="Carregando"
+                        />
                       </div>
                     </div>
                   ))}
                 </div>
               ) : metrics.lists.newClientsThisMonth.length === 0 ? (
-                <p className="text-sm text-text-80">Nenhum novo cliente registrado neste mês.</p>
+                <p className="text-sm text-text-80">
+                  Nenhum novo cliente registrado neste mês.
+                </p>
               ) : (
                 metrics.lists.newClientsThisMonth.map((c) => (
                   <div
@@ -252,10 +346,13 @@ function DashboardContent() {
                     className="flex items-center justify-between rounded-lg border border-glass-10 bg-glass-5 px-4 py-3"
                   >
                     <div className="min-w-0">
-                      <p className="truncate font-medium text-foreground">{c.name}</p>
-                      <p className="text-xs text-text-60">ID: {c.id}</p>
+                      <p className="truncate font-medium text-foreground">
+                        {c.name}
+                      </p>
                     </div>
-                    <span className="text-xs text-text-60">{formatDate(c.createdAt)}</span>
+                    <span className="text-xs text-text-60">
+                      {formatDate(c.createdAt)}
+                    </span>
                   </div>
                 ))
               )}
@@ -265,12 +362,26 @@ function DashboardContent() {
           <div className="app-card p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h2 className="text-lg font-semibold text-foreground">Top 5 clientes por valor orçado</h2>
-                <p className="mt-1 text-sm text-text-60">Somatório do mês (sem rascunhos)</p>
+                <h2 className="text-lg font-semibold text-foreground">
+                  Top 5 clientes por valor orçado
+                </h2>
+                <p className="mt-1 text-sm text-text-60">
+                  Somatório do mês (sem rascunhos)
+                </p>
               </div>
               <div className="h-11 w-11 rounded-xl bg-accent-15 text-accent-muted flex items-center justify-center">
-                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 11V7a1 1 0 112 0v4h4a1 1 0 110 2h-4v4a1 1 0 11-2 0v-4H7a1 1 0 110-2h4z" />
+                <svg
+                  className="h-6 w-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M11 11V7a1 1 0 112 0v4h4a1 1 0 110 2h-4v4a1 1 0 11-2 0v-4H7a1 1 0 110-2h4z"
+                  />
                 </svg>
               </div>
             </div>
@@ -279,7 +390,11 @@ function DashboardContent() {
               {loading ? (
                 <div className="space-y-3">
                   <div className="rounded-xl border border-glass-10 bg-glass-5 px-4 py-3">
-                    <Skeleton variant="text" width="60%" aria-label="Carregando" />
+                    <Skeleton
+                      variant="text"
+                      width="60%"
+                      aria-label="Carregando"
+                    />
                   </div>
                   {Array.from({ length: 5 }).map((_, i) => (
                     <div
@@ -287,15 +402,29 @@ function DashboardContent() {
                       className="rounded-xl border border-glass-10 bg-glass-5 px-4 py-3"
                     >
                       <div className="flex items-center justify-between gap-3">
-                        <Skeleton variant="text" width="45%" aria-label="Carregando" />
-                        <Skeleton variant="text" width={44} aria-label="Carregando" />
-                        <Skeleton variant="text" width={90} aria-label="Carregando" />
+                        <Skeleton
+                          variant="text"
+                          width="45%"
+                          aria-label="Carregando"
+                        />
+                        <Skeleton
+                          variant="text"
+                          width={44}
+                          aria-label="Carregando"
+                        />
+                        <Skeleton
+                          variant="text"
+                          width={90}
+                          aria-label="Carregando"
+                        />
                       </div>
                     </div>
                   ))}
                 </div>
               ) : metrics.lists.topClientsThisMonth.length === 0 ? (
-                <p className="text-sm text-text-80">Ainda não há orçamentos neste mês.</p>
+                <p className="text-sm text-text-80">
+                  Ainda não há orçamentos neste mês.
+                </p>
               ) : (
                 <div className="overflow-hidden rounded-xl border border-glass-10">
                   <table className="min-w-full divide-y divide-glass-10">
@@ -314,11 +443,18 @@ function DashboardContent() {
                     </thead>
                     <tbody className="bg-glass-5 divide-y divide-glass-10">
                       {metrics.lists.topClientsThisMonth.map((c) => (
-                        <tr key={c.id} className="hover:bg-glass-10 transition-colors">
+                        <tr
+                          key={c.id}
+                          className="hover:bg-glass-10 transition-colors"
+                        >
                           <td className="px-4 py-3 text-sm text-text-80 max-w-[260px]">
-                            <span className="truncate inline-block max-w-[260px]">{c.name}</span>
+                            <span className="truncate inline-block max-w-[260px]">
+                              {c.name}
+                            </span>
                           </td>
-                          <td className="px-4 py-3 text-sm text-text-80">{c.quotes}</td>
+                          <td className="px-4 py-3 text-sm text-text-80">
+                            {c.quotes}
+                          </td>
                           <td className="px-4 py-3 text-sm text-right font-medium text-foreground">
                             {formatCurrency(c.total)}
                           </td>

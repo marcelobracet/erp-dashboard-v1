@@ -31,7 +31,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     const variantStyles = {
       primary: `
         bg-accent hover:bg-accent-hover
-        text-white shadow-md hover:shadow-lg
+        text-accent-foreground shadow-md hover:shadow-lg
         focus:ring-accent
       `,
       secondary: `

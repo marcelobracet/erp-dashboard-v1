@@ -40,6 +40,7 @@ function buildClientNameLookup(clients: Client[]): Map<string, string> {
 function mapQuoteToMock(q: Quote, clientNameById: Map<string, string>): MockQuote {
   const cid = q.client_id?.trim() || '';
   const name =
+    q.client_name?.trim() ||
     q.client?.name?.trim() ||
     q.client_snapshot?.name?.trim() ||
     (cid ? clientNameById.get(cid) : undefined) ||

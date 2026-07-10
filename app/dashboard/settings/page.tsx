@@ -11,6 +11,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/contexts/AuthContext";
 import UsersManagement from "@/components/settings/UsersManagement";
 import BillingSettings from "@/components/settings/BillingSettings";
+import ImageUploadField from "@/components/ui/ImageUploadField";
 
 type TenantSettings = TenantSettingsResponse;
 
@@ -66,7 +67,7 @@ const settingsLabels: Record<string, string> = {
   company_city: "Cidade",
   company_state: "Estado",
   company_zip: "CEP",
-  logo_url: "URL do Logo",
+  logo_url: "Logo da empresa",
   primary_color: "Cor Primária",
   secondary_color: "Cor Secundária",
 };
@@ -76,7 +77,12 @@ const TAB_ITEMS: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
     id: "empresa",
     label: "Dados da empresa",
     icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg
+        className="w-4 h-4"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -90,7 +96,12 @@ const TAB_ITEMS: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
     id: "equipe",
     label: "Equipe / usuários",
     icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg
+        className="w-4 h-4"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -104,7 +115,12 @@ const TAB_ITEMS: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
     id: "plano",
     label: "Plano e faturamento",
     icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg
+        className="w-4 h-4"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -115,6 +131,17 @@ const TAB_ITEMS: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
     ),
   },
 ];
+
+const EMPTY_SETTINGS: Record<string, string> = {
+  company_name: "",
+  company_email: "",
+  company_phone: "",
+  company_address: "",
+  company_city: "",
+  company_state: "",
+  company_zip: "",
+  logo_url: "",
+};
 
 function SettingsContent() {
   const router = useRouter();
@@ -140,6 +167,7 @@ function SettingsContent() {
   const [editedSettings, setEditedSettings] = useState<Record<string, string>>(
     {},
   );
+  const [saveError, setSaveError] = useState<string | null>(null);
   const { hasPermission, hasRole } = usePermissions();
   const { user } = useAuth();
 
@@ -189,20 +217,18 @@ function SettingsContent() {
   }, [user?.tenant_id]);
 
   const handleSave = async () => {
+    setSaveError(null);
     try {
       await settingsService.update(editedSettings, user?.tenant_id);
       setIsEditing(false);
       fetchSettings();
       writeLocalSettings(user?.tenant_id, editedSettings);
       alert("Configurações salvas com sucesso!");
-    } catch {
-      writeLocalSettings(user?.tenant_id, editedSettings);
-      setTenantSettings({
-        tenant_id: user?.tenant_id ?? "default",
-        settings: editedSettings,
-      } as TenantSettings);
-      setIsEditing(false);
-      alert("Configurações salvas localmente (sem API)");
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Erro ao salvar";
+      setSaveError(message);
+      alert(message);
     }
   };
 
@@ -210,6 +236,7 @@ function SettingsContent() {
     if (tenantSettings?.settings) {
       setEditedSettings(tenantSettings.settings as Record<string, string>);
     }
+    setSaveError(null);
     setIsEditing(false);
   };
 
@@ -218,6 +245,17 @@ function SettingsContent() {
       ...prev,
       [key]: value,
     }));
+  };
+
+  const startEditing = () => {
+    if (!tenantSettings?.settings) {
+      setTenantSettings({
+        tenant_id: user?.tenant_id ?? "default",
+        settings: EMPTY_SETTINGS,
+      } as TenantSettings);
+      setEditedSettings({ ...EMPTY_SETTINGS });
+    }
+    setIsEditing(true);
   };
 
   if (loading) {
@@ -238,21 +276,30 @@ function SettingsContent() {
       <div className="space-y-8 pb-12">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1">
-            <h1 className="text-3xl font-bold text-foreground">Configurações</h1>
-            <p className="text-text-80">Gerencie sua empresa e equipe.</p>
+            <h1 className="text-3xl font-bold text-foreground uppercase">
+              Configurações
+            </h1>
+            <p className="uppercase text-text-80">
+              Gerencie sua empresa e equipe.
+            </p>
           </div>
           {activeTab === "empresa" && hasPermission("settings", "update") && (
-            <div className="flex gap-3 shrink-0">
-              {isEditing ? (
-                <>
-                  <Button variant="outline" onClick={handleCancel}>
-                    Cancelar
-                  </Button>
-                  <Button onClick={handleSave}>Salvar</Button>
-                </>
-              ) : (
-                <Button onClick={() => setIsEditing(true)}>Editar</Button>
+            <div className="flex flex-col items-end gap-2 shrink-0">
+              {saveError && (
+                <p className="text-sm text-red-400">{saveError}</p>
               )}
+              <div className="flex gap-3">
+                {isEditing ? (
+                  <>
+                    <Button variant="outline" onClick={handleCancel}>
+                      Cancelar
+                    </Button>
+                    <Button onClick={handleSave}>Salvar</Button>
+                  </>
+                ) : (
+                  <Button onClick={startEditing}>Editar</Button>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -271,7 +318,9 @@ function SettingsContent() {
                     : "text-text-60 hover:text-foreground"
                 }`}
               >
-                <span className={active ? "text-accent" : "text-text-60"}>{t.icon}</span>
+                <span className={active ? "text-accent" : "text-text-60"}>
+                  {t.icon}
+                </span>
                 {t.label}
               </button>
             );
@@ -294,7 +343,7 @@ function SettingsContent() {
 
         {activeTab === "empresa" && (
           <>
-            {!tenantSettings || !tenantSettings.settings ? (
+            {(!tenantSettings || !tenantSettings.settings) && !isEditing ? (
               <div className="app-card p-12 text-center rounded-2xl border border-glass-10">
                 <svg
                   className="mx-auto h-12 w-12 text-text-60"
@@ -306,24 +355,22 @@ function SettingsContent() {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                  />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
                   />
                 </svg>
-                <h3 className="mt-2 text-sm font-medium text-foreground">
-                  Nenhuma configuração encontrada
+                <h3 className="mt-4 text-lg font-medium text-foreground">
+                  Configure os dados da sua empresa
                 </h3>
-                <p className="mt-1 text-sm text-text-80">
-                  Não há configurações disponíveis no momento.
+                <p className="mt-2 text-sm text-text-80">
+                  Preencha as informações da empresa para personalizar o
+                  sistema.
                 </p>
-                <Button className="mt-4" onClick={fetchSettings}>
-                  Tentar novamente
-                </Button>
+                <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+                  <Button onClick={startEditing}>Começar configuração</Button>
+                  <Button variant="outline" onClick={fetchSettings}>
+                    Tentar novamente
+                  </Button>
+                </div>
               </div>
             ) : (
               <div className="space-y-6">
@@ -405,24 +452,22 @@ function SettingsContent() {
                         {settingsLabels.logo_url}
                       </label>
                       {isEditing ? (
-                        <Input
+                        <ImageUploadField
+                          purpose="logo"
+                          preview="logo"
+                          showUrlInput
+                          uploadLabel="Enviar logo"
                           value={editedSettings.logo_url || ""}
-                          onChange={(e) => handleChange("logo_url", e.target.value)}
-                          placeholder="https://example.com/logo.png"
+                          onChange={(url) => handleChange("logo_url", url)}
                         />
                       ) : (
-                        <div className="py-2">
-                          {settings.logo_url ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={settings.logo_url}
-                              alt="Logo"
-                              className="h-16 max-w-[200px] object-contain"
-                            />
-                          ) : (
-                            <p className="text-text-60">-</p>
-                          )}
-                        </div>
+                        <ImageUploadField
+                          purpose="logo"
+                          preview="logo"
+                          value={settings.logo_url || ""}
+                          onChange={() => {}}
+                          readOnly
+                        />
                       )}
                     </div>
                   </div>

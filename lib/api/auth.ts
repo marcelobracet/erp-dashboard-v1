@@ -48,6 +48,7 @@ export interface UserProfile {
   role: string;
   tenant_id?: string;
   roles?: string[];
+  avatar_url?: string;
 }
 
 export const authService = {
@@ -109,6 +110,14 @@ export const authService = {
    */
   async getProfile(): Promise<UserProfile> {
     return apiClient.get<UserProfile>(API_CONFIG.endpoints.users.profile);
+  },
+
+  /** PUT /api/v1/users/profile — update avatar_url after GCS upload. */
+  async updateProfile(payload: { avatar_url: string }): Promise<UserProfile> {
+    return apiClient.put<UserProfile>(
+      API_CONFIG.endpoints.users.profile,
+      payload,
+    );
   },
 
   /** Clears stored tokens. */

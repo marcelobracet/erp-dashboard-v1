@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import Button from '@/components/ui/Button';
+import CreateButton from '@/components/ui/CreateButton';
 import Input from '@/components/ui/Input';
 import { quoteService, Quote } from '@/lib/api/services';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -154,13 +154,12 @@ function QuotesContent() {
               }
             />
             <ProtectedComponent resource="quotes" action="create">
-              <Button
-                className="shrink-0 dark:text-black whitespace-nowrap"
+              <CreateButton
+                className="shrink-0 whitespace-nowrap"
                 onClick={() => router.push('/dashboard/quotes/new')}
               >
-                <span className="mr-1 text-lg leading-none">+</span>
                 Novo orçamento
-              </Button>
+              </CreateButton>
             </ProtectedComponent>
           </div>
         </div>

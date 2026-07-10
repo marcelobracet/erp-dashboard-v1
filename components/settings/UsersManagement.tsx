@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Table } from '@/components/ui/Table';
 import { Modal } from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
+import CreateButton from '@/components/ui/CreateButton';
 import Input from '@/components/ui/Input';
 import { userService, User } from '@/lib/api/services';
 import { authService } from '@/lib/api/auth';
@@ -262,22 +263,9 @@ export default function UsersManagement({ embedded }: { embedded?: boolean }) {
               <p className="text-text-80 mt-1">Gerencie os usuários do tenant</p>
             </div>
             {hasPermission('users', 'create') && (
-              <Button onClick={openCreate} size="md">
-                <svg
-                  className="w-4 h-4 mr-2"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 4v16m8-8H4"
-                  />
-                </svg>
+              <CreateButton onClick={openCreate} size="md">
                 Novo usuário
-              </Button>
+              </CreateButton>
             )}
           </div>
         ) : (
@@ -289,22 +277,9 @@ export default function UsersManagement({ embedded }: { embedded?: boolean }) {
               </p>
             </div>
             {hasPermission('users', 'create') && (
-              <Button onClick={openCreate} size="md" className="sm:ml-auto">
-                <svg
-                  className="w-4 h-4 mr-2"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 4v16m8-8H4"
-                  />
-                </svg>
+              <CreateButton onClick={openCreate} size="md" className="sm:ml-auto">
                 Novo usuário
-              </Button>
+              </CreateButton>
             )}
           </div>
         )}

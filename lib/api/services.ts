@@ -2,6 +2,7 @@ import { apiClient } from "./client";
 import { API_CONFIG } from "./config";
 import { getTenantIdSync } from '@/lib/auth/tenant';
 import { isLocalProductsEnabled, isLocalQuotesEnabled } from '@/lib/featureFlags';
+import { enrichQuoteItems } from '@/lib/quotes/enrichQuoteItems';
 import { quoteMatchesListTab, type QuoteListTab } from '@/lib/utils/quoteListTab';
 import { localProductStore } from '@/lib/local/products';
 import { localQuoteStore } from '@/lib/local/quotes';
@@ -61,17 +62,29 @@ export interface Product {
   line?: string;
   waste_percent?: number;
   minimum_charge?: number;
-  image_url?: string; // for now can be a data URL; later a bucket URL
+  image_url?: string; // GCS object key (e.g. products/...) or external URL
   active?: boolean;
   is_active?: boolean;
 }
 
+export type QuotePaymentMethod = 'pix' | 'boleto' | 'credit' | 'debit';
+
 export interface Quote {
   id: string;
   client_id: string;
+  client_name?: string;
   client?: Client;
   status: string;
+  work_status?: string;
   total: number;
+  subtotal?: number;
+  discount?: number;
+  items_count?: number;
+  payment_method?: QuotePaymentMethod;
+  payment_discount_enabled?: boolean;
+  discount_percent?: number;
+  payment_installments_enabled?: boolean;
+  installment_count?: number;
   items?: QuoteItem[];
   tenant_id?: string;
   created_at?: string;
@@ -197,6 +210,25 @@ function isErrorEnvelope(res: unknown): res is { error?: unknown; message?: unkn
   return 'error' in (res as Record<string, unknown>) || 'message' in (res as Record<string, unknown>);
 }
 
+function hasQuotesKey(res: unknown): res is QuotesListResponse {
+  return !!res && typeof res === 'object' && 'quotes' in res;
+}
+
+function hasDataKey(res: unknown): res is PaginatedResponse<Quote> {
+  return !!res && typeof res === 'object' && 'data' in res;
+}
+
+function hasQuoteKey(res: unknown): res is { quote: Quote } {
+  return !!res && typeof res === 'object' && 'quote' in res && !!(res as { quote: Quote }).quote;
+}
+
+function errorMessageFromEnvelope(res: unknown): string | undefined {
+  if (!isErrorEnvelope(res)) return undefined;
+  const msg = res.error ?? res.message;
+  if (typeof msg === 'string' && msg.trim()) return msg;
+  return undefined;
+}
+
 // Services
 export const tenantService = {
   list: () => apiClient.get<Tenant[]>(API_CONFIG.endpoints.tenants.list),
@@ -312,9 +344,9 @@ export const quoteService = {
         | { error?: string; message?: string }
       >(url);
 
-      if (!Array.isArray(res) && isErrorEnvelope(res) && !('quotes' in (res as any)) && !('data' in (res as any))) {
-        const msg = (res as any).error ?? (res as any).message;
-        if (typeof msg === 'string' && msg.trim()) throw new Error(msg);
+      if (!Array.isArray(res) && isErrorEnvelope(res) && !hasQuotesKey(res) && !hasDataKey(res)) {
+        const msg = errorMessageFromEnvelope(res);
+        if (msg) throw new Error(msg);
       }
 
       return unwrapQuotesList(res as Quote[] | PaginatedResponse<Quote> | QuotesListResponse);
@@ -328,26 +360,38 @@ export const quoteService = {
     }
   },
   getById: async (id: string) => {
-    if (isLocalQuotesEnabled()) return localQuoteStore.getById(id) as Quote;
+    const enrich = async (quote: Quote): Promise<Quote> => {
+      if (!quote?.items?.length) return quote;
+      try {
+        const products = await productService.list({ limit: 500 });
+        return { ...quote, items: enrichQuoteItems(quote.items, products) };
+      } catch {
+        return { ...quote, items: enrichQuoteItems(quote.items, []) };
+      }
+    };
+
+    if (isLocalQuotesEnabled()) {
+      const q = localQuoteStore.getById(id) as Quote;
+      return enrich(q);
+    }
     try {
-      const res = await apiClient.get<
-        | Quote
-        | { quote: Quote }
-        | { error?: string; message?: string }
-      >(API_CONFIG.endpoints.quotes.byId(id));
-
-      if (isErrorEnvelope(res) && !('quote' in (res as any))) {
-        const msg = (res as any).error ?? (res as any).message;
-        if (typeof msg === 'string' && msg.trim()) throw new Error(msg);
+      const res = await apiClient.get<Quote | { quote: Quote } | { error?: string; message?: string }>(
+        API_CONFIG.endpoints.quotes.byId(id),
+      );
+      if (isErrorEnvelope(res) && !hasQuoteKey(res)) {
+        const msg = errorMessageFromEnvelope(res);
+        if (msg) throw new Error(msg);
       }
-
-      if (res && typeof res === 'object' && 'quote' in (res as any) && (res as any).quote) {
-        return (res as any).quote as Quote;
+      let quote: Quote;
+      if (hasQuoteKey(res)) {
+        quote = res.quote;
+      } else {
+        quote = res as Quote;
       }
-
-      return res as Quote;
+      return enrich(quote);
     } catch {
-      return localQuoteStore.getById(id) as Quote;
+      const q = localQuoteStore.getById(id) as Quote;
+      return enrich(q);
     }
   },
   create: async (data: Partial<Quote>) => {
@@ -417,8 +461,15 @@ export const settingsService = {
       : API_CONFIG.endpoints.settings.get.split("?")[0]; // Remove query params if no tenantId
     return apiClient.get<TenantSettingsResponse>(endpoint);
   },
-  update: (data: Partial<Settings>) =>
-    apiClient.put<Settings>(API_CONFIG.endpoints.settings.update, withTenantId(data as Record<string, unknown>)),
+  update: (settings: Record<string, string>, tenantId?: string) => {
+    const tid = tenantId ?? getTenantIdSync() ?? undefined;
+    const payload: Record<string, unknown> = { settings };
+    if (tid) payload.tenant_id = tid;
+    return apiClient.put<TenantSettingsResponse>(
+      API_CONFIG.endpoints.settings.update,
+      payload,
+    );
+  },
 };
 
 export const userService = {
@@ -446,35 +497,3 @@ export interface User {
   created_at?: string;
   updated_at?: string;
 }
-
-export type RoadmapItemStatus = 'backlog' | 'in_progress' | 'done';
-
-export interface RoadmapItem {
-  id: string;
-  title: string;
-  description: string;
-  status: RoadmapItemStatus;
-  created_at?: string;
-  updated_at?: string;
-}
-
-export const roadmapService = {
-  listItems: async () => {
-    const res = await apiClient.get<RoadmapItem[] | { items?: RoadmapItem[] } | null>(
-      API_CONFIG.endpoints.roadmap.items
-    );
-    if (Array.isArray(res)) return res;
-    if (res && typeof res === 'object' && Array.isArray((res as { items?: RoadmapItem[] }).items)) {
-      return (res as { items: RoadmapItem[] }).items;
-    }
-    return [];
-  },
-  createItem: (data: { title: string; description: string; status: RoadmapItemStatus }) =>
-    apiClient.post<RoadmapItem>(API_CONFIG.endpoints.roadmap.items, data),
-  updateItem: (id: string, data: Partial<Pick<RoadmapItem, 'title' | 'description' | 'status'>>) =>
-    apiClient.put<RoadmapItem>(API_CONFIG.endpoints.roadmap.itemById(id), data),
-  deleteItem: (id: string) =>
-    apiClient.delete<void>(API_CONFIG.endpoints.roadmap.itemById(id)),
-  submitSuggestion: (data: { title: string; description: string }) =>
-    apiClient.post<{ message?: string }>(API_CONFIG.endpoints.roadmap.suggestions, data),
-};

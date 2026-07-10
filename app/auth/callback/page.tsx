@@ -18,7 +18,9 @@ export default function AuthCallbackPage() {
     const refresh = params.get("refresh_token");
 
     if (!access) {
-      setMessage("Link inválido ou expirado. Faça login.");
+      queueMicrotask(() =>
+        setMessage("Link inválido ou expirado. Faça login."),
+      );
       const t = setTimeout(() => router.replace("/auth/login"), 2500);
       return () => clearTimeout(t);
     }
@@ -29,7 +31,7 @@ export default function AuthCallbackPage() {
         localStorage.setItem("refresh_token", refresh);
       }
     } catch {
-      setMessage("Não foi possível salvar a sessão.");
+      queueMicrotask(() => setMessage("Não foi possível salvar a sessão."));
       setTimeout(() => router.replace("/auth/login"), 2500);
       return;
     }

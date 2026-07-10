@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import ImageUploadField from '@/components/ui/ImageUploadField';
 import type { Product } from '@/lib/api/services';
 import { productService } from '@/lib/api/services';
 
@@ -49,15 +50,6 @@ function toIntOrUndefined(value: string): number | undefined {
   return Math.trunc(n);
 }
 
-async function fileToDataUrl(file: File): Promise<string> {
-  return await new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result ?? ''));
-    reader.onerror = () => reject(new Error('Falha ao ler imagem'));
-    reader.readAsDataURL(file);
-  });
-}
-
 function initialDraft(product?: Product | null): Draft {
   return {
     name: product?.name ?? '',
@@ -92,15 +84,9 @@ export default function ProductForm({
   onSaved: (p: Product) => void;
 }) {
   const [draft, setDraft] = useState<Draft>(() => initialDraft(product));
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageUrl, setImageUrl] = useState(() => product?.image_url ?? '');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const previewUrl = useMemo(() => {
-    if (imageFile) return URL.createObjectURL(imageFile);
-    if (product?.image_url) return product.image_url;
-    return null;
-  }, [imageFile, product?.image_url]);
 
   function update<K extends keyof Draft>(key: K, value: Draft[K]) {
     setDraft((p) => ({ ...p, [key]: value }));
@@ -133,7 +119,6 @@ export default function ProductForm({
     setIsSaving(true);
     try {
 
-      const image_url = imageFile ? await fileToDataUrl(imageFile) : product?.image_url;
       const payload: Partial<Product> = {
         name,
         description: draft.description.trim() || undefined,
@@ -141,7 +126,7 @@ export default function ProductForm({
         stock,
         sku,
         category: draft.category,
-        image_url,
+        image_url: imageUrl.trim() || undefined,
         active: draft.active,
         unit: draft.unit,
         pricing_rule: draft.pricing_rule,
@@ -285,23 +270,13 @@ export default function ProductForm({
 
       <div>
         <label className="block text-sm font-medium text-text-80 mb-2">Imagem do produto</label>
-        <div className="flex items-start gap-4">
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
-            className="block w-full text-sm text-text-60 file:mr-3 file:rounded-xl file:border-0 file:bg-accent-15 file:px-4 file:py-2 file:text-foreground hover:file:bg-accent-20"
-          />
-          {previewUrl && (
-            <div className="shrink-0 w-24 h-24 rounded-xl border border-glass-10 bg-glass-5 overflow-hidden">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={previewUrl} alt="Prévia" className="w-full h-full object-cover" />
-            </div>
-          )}
-        </div>
-        <p className="mt-2 text-xs text-text-60">
-          Por enquanto a imagem fica salva localmente (data URL). Depois trocamos para bucket e salvamos a URL.
-        </p>
+        <ImageUploadField
+          purpose="product"
+          preview="product"
+          value={imageUrl}
+          onChange={setImageUrl}
+          uploadLabel="Enviar foto do produto"
+        />
       </div>
 
       <div>

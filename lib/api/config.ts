@@ -40,11 +40,6 @@ export const API_CONFIG = {
       get: "/api/v1/settings",
       update: "/api/v1/settings",
     },
-    roadmap: {
-      items: "/api/v1/roadmap/items",
-      itemById: (id: string) => `/api/v1/roadmap/items/${id}`,
-      suggestions: "/api/v1/roadmap/suggestions",
-    },
     reports: {
       export: "/api/v1/reports/export",
     },
@@ -52,6 +47,10 @@ export const API_CONFIG = {
       status: "/api/v1/billing/status",
       sync: "/api/v1/billing/sync",
       checkout: "/api/v1/billing/checkout",
+    },
+    uploads: {
+      sign: "/api/v1/uploads/sign",
+      readUrl: "/api/v1/uploads/read-url",
     },
   },
 } as const;

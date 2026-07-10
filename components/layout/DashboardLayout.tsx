@@ -4,8 +4,10 @@ import React, { useId, useMemo, useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsClient } from "@/hooks/useIsClient";
 import { usePermissions } from "@/hooks/usePermissions";
 import Image from "next/image";
+import { Avatar } from "@/components/ui/Avatar";
 import {
   getPreferredTheme,
   setTheme,
@@ -131,28 +133,13 @@ const navigation: NavItem[] = [
   },
 ];
 
-const idearioNavItem: NavItem = {
-  name: "Ideário",
-  href: "/dashboard/ideario",
-  icon: (
-    <svg
-      className="w-6 h-6"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-      />
-    </svg>
-  ),
-};
-
 const supportWhatsAppIcon = (
-  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <svg
+    className="w-6 h-6"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
     <path
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -168,7 +155,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const isClient = useIsClient();
   const [currentDate, setCurrentDate] = useState("");
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [theme, setThemeState] = useState<Theme>("light");
@@ -178,20 +165,7 @@ export default function DashboardLayout({
   const profileMenuId = useId();
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
 
-  const userInitials = useMemo(() => {
-    const name = user?.name?.trim();
-    if (!name) return "U";
-    const parts = name.split(/\s+/).filter(Boolean);
-    return (
-      parts
-        .slice(0, 2)
-        .map((p) => p[0] ?? "")
-        .join("")
-        .toUpperCase() || "U"
-    );
-  }, [user?.name]);
-
-  const userRoleLabel = useMemo(() => {
+const userRoleLabel = useMemo(() => {
     const role = user?.role;
     if (!role) return "";
     if (role === "admin") return "Administrador";
@@ -202,26 +176,28 @@ export default function DashboardLayout({
 
   // Prevent hydration mismatch by only rendering after mount
   useEffect(() => {
-    setMounted(true);
-    // Use deterministic date formatting to prevent hydration mismatch
-    const now = new Date();
-    const day = String(now.getDate()).padStart(2, "0");
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const year = now.getFullYear();
-    setCurrentDate(`${day}/${month}/${year}`);
+    queueMicrotask(() => {
+      // Use deterministic date formatting to prevent hydration mismatch
+      const now = new Date();
+      const day = String(now.getDate()).padStart(2, "0");
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+      const year = now.getFullYear();
+      setCurrentDate(`${day}/${month}/${year}`);
 
-    const preferred = getPreferredTheme();
-    setThemeState(preferred);
-    setTheme(preferred);
+      const preferred = getPreferredTheme();
+      setThemeState(preferred);
+      setTheme(preferred);
+    });
   }, []);
 
   useEffect(() => {
     if (!profileMenuOpen) return;
 
-    const onPointerDown = (e: PointerEvent) => {
+    const onPointerDown = (e: Event) => {
+      if (!(e.target instanceof Node)) return;
       const container = profileMenuRef.current;
       if (!container) return;
-      if (e.target instanceof Node && container.contains(e.target)) return;
+      if (container.contains(e.target)) return;
       setProfileMenuOpen(false);
     };
 
@@ -229,28 +205,22 @@ export default function DashboardLayout({
       if (e.key === "Escape") setProfileMenuOpen(false);
     };
 
-    document.addEventListener("pointerdown", onPointerDown, { capture: true });
+    const pointerOptions: AddEventListenerOptions = { capture: true };
+    document.addEventListener("pointerdown", onPointerDown, pointerOptions);
     document.addEventListener("keydown", onKeyDown);
     return () => {
-      document.removeEventListener("pointerdown", onPointerDown, {
-        capture: true,
-      } as any);
+      document.removeEventListener("pointerdown", onPointerDown, pointerOptions);
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [profileMenuOpen]);
 
-  const filteredNavigation = mounted
+  const filteredNavigation = isClient
     ? navigation.filter((item) => {
         if (item.roles && !hasRole(item.roles)) return false;
         if (item.resource && !canAccess(item.resource)) return false;
         return true;
       })
     : []; // Empty array during SSR
-
-  const showIdearioNav =
-    mounted &&
-    (!idearioNavItem.roles || hasRole(idearioNavItem.roles)) &&
-    (!idearioNavItem.resource || canAccess(idearioNavItem.resource));
 
   const supportWhatsAppHref = getSupportWhatsAppHref();
 
@@ -261,7 +231,7 @@ export default function DashboardLayout({
         : "text-text-80 hover:bg-glass-10"
     }`;
 
-  if (!mounted) {
+  if (!isClient) {
     return (
       <div className="min-h-screen bg-background text-foreground">
         <div className="lg:pl-64">
@@ -343,19 +313,6 @@ export default function DashboardLayout({
           </nav>
 
           <div className="shrink-0 px-4 pt-2 pb-6 border-t border-glass-10 space-y-2">
-            {showIdearioNav ? (
-              <Link
-                href={idearioNavItem.href}
-                className={sidebarLinkClass(
-                  pathname === idearioNavItem.href ||
-                    pathname.startsWith(idearioNavItem.href + "/")
-                )}
-                onClick={() => setSidebarOpen(false)}
-              >
-                {idearioNavItem.icon}
-                <span className="font-medium">{idearioNavItem.name}</span>
-              </Link>
-            ) : null}
             <a
               href={supportWhatsAppHref}
               target="_blank"
@@ -431,9 +388,11 @@ export default function DashboardLayout({
                 aria-expanded={profileMenuOpen}
                 aria-controls={profileMenuId}
               >
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-accent to-accent-detail flex items-center justify-center text-zinc-950 font-semibold shrink-0">
-                  {userInitials}
-                </div>
+                <Avatar
+                  size="sm"
+                  name={user?.name || ""}
+                  url={user?.avatar_url || ""}
+                />
                 <div className="hidden sm:flex flex-col items-start leading-tight max-w-[160px]">
                   <span className="text-sm font-medium text-foreground truncate w-full">
                     {user?.name || "Usuário"}
