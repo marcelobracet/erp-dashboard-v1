@@ -1,19 +1,16 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Table } from "@/components/ui/Table";
 import { Modal } from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
-import CreateButton from "@/components/ui/CreateButton";
 import Input from "@/components/ui/Input";
 import { clientService, Client } from "@/lib/api/services";
 import { usePermissions } from "@/hooks/usePermissions";
 import { ProtectedComponent } from "@/components/auth/ProtectedComponent";
 import { formatDate } from "@/lib/utils/format";
-import { useAuth } from "@/contexts/AuthContext";
-import { filterClientsForManagement } from "@/lib/clients/filterManagedClients";
 
 function ClientsContent() {
   const [clients, setClients] = useState<Client[]>([]);
@@ -22,13 +19,12 @@ function ClientsContent() {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const { hasPermission } = usePermissions();
-  const { user } = useAuth();
 
   const fetchClients = async () => {
     try {
       setLoading(true);
       const data = await clientService.list();
-      setClients(filterClientsForManagement(data, user?.email));
+      setClients(data);
     } catch (error) {
       console.error("Failed to fetch clients:", error);
     } finally {
@@ -38,16 +34,12 @@ function ClientsContent() {
 
   useEffect(() => {
     fetchClients();
-  }, [user?.email]);
+  }, []);
 
-  const filteredClients = useMemo(
-    () =>
-      clients.filter(
-        (client) =>
-          client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          client.email?.toLowerCase().includes(searchTerm.toLowerCase()),
-      ),
-    [clients, searchTerm],
+  const filteredClients = clients?.filter(
+    (client) =>
+      client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      client.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const columns = [
@@ -56,7 +48,7 @@ function ClientsContent() {
       header: "Nome",
       render: (value: string, row: Client) => (
         <div>
-          <div className="font-medium text-gray-500 dark:text-foreground ">
+          <div className="font-medium text-foreground dark:text-white">
             {value}
           </div>
           {row.email && (
@@ -76,7 +68,7 @@ function ClientsContent() {
       header: "Documento",
       render: (value: string, row: Client) => (
         <div className="flex flex-col">
-          <span className="text-sm text-foreground">{value || "-"}</span>
+          <span className="text-sm text-foreground">{value || '-'}</span>
           {row.document_type && (
             <span className="text-xs text-text-60">{row.document_type}</span>
           )}
@@ -89,8 +81,8 @@ function ClientsContent() {
       render: (_: unknown, row: Client) => {
         const city = row.city?.trim();
         const state = row.state?.trim();
-        if (!city && !state) return "-";
-        return `${city ?? ""}${city && state ? "/" : ""}${state ?? ""}`;
+        if (!city && !state) return '-';
+        return `${city ?? ''}${city && state ? '/' : ''}${state ?? ''}`;
       },
     },
     {
@@ -103,11 +95,11 @@ function ClientsContent() {
           <span
             className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${
               active
-                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                : "bg-red-500/10 text-red-400 border-red-500/20"
+                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                : 'bg-red-500/10 text-red-400 border-red-500/20'
             }`}
           >
-            {active ? "Ativo" : "Inativo"}
+            {active ? 'Ativo' : 'Inativo'}
           </span>
         );
       },
@@ -140,22 +132,23 @@ function ClientsContent() {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-foreground uppercase">
+            <h1 className="text-3xl font-bold text-foreground">
               Clientes
             </h1>
-            <p className="text-text-80 mt-1 uppercase">
+            <p className="text-text-80 mt-1">
               Gerencie seus clientes
             </p>
           </div>
           <ProtectedComponent resource="clients" action="create">
-            <CreateButton
+            <Button
+              variant="primary"
               onClick={() => {
                 setSelectedClient(null);
                 setIsModalOpen(true);
               }}
             >
               Novo Cliente
-            </CreateButton>
+            </Button>
           </ProtectedComponent>
         </div>
 
@@ -286,6 +279,7 @@ function ClientsContent() {
       </div>
     </DashboardLayout>
   );
+  
 }
 
 export default function ClientsPage() {

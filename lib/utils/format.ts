@@ -33,3 +33,19 @@ export function formatCurrency(value: number | undefined | null): string {
   return formatted;
 }
 
+const PRODUCT_UNIT_LABELS: Record<string, string> = {
+  m2: 'm²',
+  m: 'm',
+  un: 'un',
+  kit: 'kit',
+  chapa: 'chapa',
+  hora: 'h',
+};
+
+/** Human-readable product unit for quote tables. */
+export function formatProductUnit(unit?: string | null): string {
+  const key = unit?.trim().toLowerCase();
+  if (!key) return '—';
+  return PRODUCT_UNIT_LABELS[key] ?? unit ?? '—';
+}
+

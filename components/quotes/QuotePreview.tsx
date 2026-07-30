@@ -4,9 +4,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import type { Quote, QuoteItem } from '@/lib/api/services';
 import { formatCurrency } from '@/lib/utils/format';
 import { settingsService } from '@/lib/api/services';
-import { quoteItemSpecLine, quoteItemTitle, quoteItemUserNote } from '@/lib/quotes/enrichQuoteItems';
-import { getQuoteDiscountSummary } from '@/lib/quotes/discountSummary';
-import { getStorageReadUrl } from '@/lib/api/uploads';
 import Image from 'next/image';
 
 function fmtNum(n: number | undefined, digits = 2): string {
@@ -38,47 +35,15 @@ export default function QuotePreview({ quote }: { quote: Quote }) {
     : new Date().toLocaleDateString('pt-BR');
 
   const items = useMemo(() => quote.items ?? [], [quote.items]);
-  const discountSummary = useMemo(() => getQuoteDiscountSummary(quote), [quote]);
 
   const envSections = useMemo(() => {
     const byId = new Map<string, QuoteItem>();
     for (const it of items) byId.set(it.id, it);
 
-    const assignByPosition = (): Map<number, QuoteItem[]> | null => {
-      if (!quote.environments?.length || items.length === 0) return null;
-      let resolved = 0;
-      for (const env of quote.environments) {
-        for (const id of env.item_ids ?? []) {
-          if (byId.has(id)) resolved++;
-        }
-      }
-      if (resolved > 0) return null;
-      const slots = new Map<number, QuoteItem[]>();
-      let cursor = 0;
-      quote.environments.forEach((env, idx) => {
-        const count = (env.item_ids ?? []).length;
-        if (count <= 0) {
-          slots.set(idx, []);
-          return;
-        }
-        slots.set(idx, items.slice(cursor, cursor + count));
-        cursor += count;
-      });
-      if (cursor === 0) return null;
-      return slots;
-    };
-
-    const positional = assignByPosition();
-
     // Prefer explicit environments ordering
     if (quote.environments && quote.environments.length > 0) {
-      return quote.environments.map((env, idx) => {
-        let envItems = (env.item_ids ?? [])
-          .map((id) => byId.get(id))
-          .filter(Boolean) as QuoteItem[];
-        if (envItems.length === 0 && positional?.has(idx)) {
-          envItems = positional.get(idx) ?? [];
-        }
+      return quote.environments.map((env) => {
+        const envItems = env.item_ids.map((id) => byId.get(id)).filter(Boolean) as QuoteItem[];
         const subtotal = envItems.reduce((acc, it) => acc + Number(it.subtotal ?? 0), 0);
         return { id: env.id, name: env.name, items: envItems, subtotal };
       });
@@ -119,27 +84,13 @@ export default function QuotePreview({ quote }: { quote: Quote }) {
       if (!mounted) return;
 
       if (nextName) setCompanyName(nextName);
-      if (nextLogo) {
-        try {
-          const resolved = await getStorageReadUrl(nextLogo);
-          if (mounted) setLogoUrl(resolved);
-        } catch {
-          if (mounted) setLogoUrl('');
-        }
-      }
+      if (nextLogo) setLogoUrl(nextLogo);
 
       try {
         const lsName = String(window.localStorage.getItem('company_name') ?? '').trim();
         const lsLogo = String(window.localStorage.getItem('logo_url') ?? '').trim();
         if (!nextName && lsName) setCompanyName(lsName);
-        if (!nextLogo && lsLogo) {
-          try {
-            const resolved = await getStorageReadUrl(lsLogo);
-            if (mounted) setLogoUrl(resolved);
-          } catch {
-            // ignore
-          }
-        }
+        if (!nextLogo && lsLogo) setLogoUrl(lsLogo);
       } catch {
         // ignore
       }
@@ -246,13 +197,11 @@ export default function QuotePreview({ quote }: { quote: Quote }) {
                     {env.items.map((it) => (
                       <tr key={it.id}>
                         <td className="py-3 px-4 align-top">
-                          <div className="font-medium">{quoteItemTitle(it)}</div>
-                          {quoteItemSpecLine(it) ? (
-                            <div className="text-xs text-text-60 print:text-[#050a30]/65 mt-1">{quoteItemSpecLine(it)}</div>
-                          ) : null}
-                          {quoteItemUserNote(it) ? (
-                            <div className="text-xs mt-1 text-red-600">{quoteItemUserNote(it)}</div>
-                          ) : null}
+                          <div className="font-medium">{it.product?.name ?? it.description ?? 'Item'}</div>
+                          {it.description && (
+                            <div className="text-xs text-text-60 print:text-[#050a30]/65 mt-1">{it.description}</div>
+                          )}
+                          {it.note && <div className="text-xs mt-1 text-red-600">{it.note}</div>}
                         </td>
                         <td className="py-3 px-4 text-text-60 print:text-[#050a30]/75 align-top">{itemDims(it)}</td>
                         <td className="py-3 px-4 text-right align-top">
@@ -283,37 +232,11 @@ export default function QuotePreview({ quote }: { quote: Quote }) {
         )}
 
         <div className="mt-6 flex items-center justify-end">
-          <div className="w-full max-w-sm rounded-lg border border-[#e6eaf7] p-4 space-y-3">
-            {discountSummary ? (
-              <>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-text-60 print:text-[#050a30]/70">Subtotal</span>
-                  <span className="text-sm font-medium">{formatCurrency(discountSummary.subtotal)}</span>
-                </div>
-                <div className="rounded-lg border border-amber-500/25 bg-amber-500/5 px-3 py-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium text-foreground">Desconto aplicado</span>
-                    <span className="font-semibold text-amber-700 print:text-amber-800">
-                      − {formatCurrency(discountSummary.discountAmount)}
-                    </span>
-                  </div>
-                  <div className="text-xs text-text-60 print:text-[#050a30]/70 mt-1">
-                    {discountSummary.mode === 'percent'
-                      ? `Percentual (${discountSummary.rateLabel})`
-                      : 'Valor fixo (R$)'}
-                  </div>
-                </div>
-                <div className="flex items-center justify-between pt-1 border-t border-glass-10 print:border-[#e6eaf7]">
-                  <span className="text-sm text-text-60 print:text-[#050a30]/70">Total</span>
-                  <span className="text-2xl font-extrabold text-[#16a34a]">{formatCurrency(discountSummary.total)}</span>
-                </div>
-              </>
-            ) : (
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-text-60 print:text-[#050a30]/70">Total</span>
-                <span className="text-2xl font-extrabold text-[#16a34a]">{formatCurrency(quote.total ?? 0)}</span>
-              </div>
-            )}
+          <div className="w-full max-w-sm rounded-lg border border-[#e6eaf7] p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-text-60 print:text-[#050a30]/70">Total</span>
+              <span className="text-2xl font-extrabold text-[#16a34a]">{formatCurrency(quote.total ?? 0)}</span>
+            </div>
           </div>
         </div>
 

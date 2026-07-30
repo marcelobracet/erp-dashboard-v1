@@ -4,6 +4,7 @@ export const API_CONFIG = {
     auth: {
       login: "/api/v1/auth/login",
       refresh: "/api/v1/auth/refresh",
+      provision: "/api/v1/auth/provision",
     },
     users: {
       profile: "/api/v1/users/profile",
@@ -42,11 +43,6 @@ export const API_CONFIG = {
     },
     reports: {
       export: "/api/v1/reports/export",
-    },
-    billing: {
-      status: "/api/v1/billing/status",
-      sync: "/api/v1/billing/sync",
-      checkout: "/api/v1/billing/checkout",
     },
     uploads: {
       sign: "/api/v1/uploads/sign",

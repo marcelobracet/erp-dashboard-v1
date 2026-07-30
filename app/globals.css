@@ -50,7 +50,6 @@
   --accent-15: rgba(35, 61, 255, 0.15); /* blue/15 */
   --accent-20: rgba(35, 61, 255, 0.2); /* blue/20 */
   --accent-90: rgba(2, 146, 183, 0.9); /* teal/90 */
-  --accent-foreground: #ffffff;
 
   /* Skeleton shimmer */
   --skeleton-base: rgba(5, 10, 48, 0.08);
@@ -82,7 +81,6 @@
   --accent-15: rgba(153, 223, 236, 0.16);
   --accent-20: rgba(153, 223, 236, 0.22);
   --accent-90: rgba(26, 200, 219, 0.9);
-  --accent-foreground: #050a30;
 
   --skeleton-base: rgba(244, 246, 252, 0.10);
   --skeleton-highlight: rgba(255, 255, 255, 0.14);
@@ -117,7 +115,6 @@
   --color-accent-15: var(--accent-15);
   --color-accent-20: var(--accent-20);
   --color-accent-90: var(--accent-90);
-  --color-accent-foreground: var(--accent-foreground);
 
   /* Extra semantic helpers */
   --color-primary: var(--brand-blue);

@@ -5,6 +5,11 @@ import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { clientService, type Client } from "@/lib/api/services";
+import {
+  clientFormToPayload,
+  parseClientForm,
+  type ClientFormValues,
+} from "@/lib/validation/clientSchema";
 
 type ClientQuickFormProps = {
   isOpen: boolean;
@@ -12,12 +17,12 @@ type ClientQuickFormProps = {
   onCreated: (client: Client) => void;
 };
 
-const EMPTY = {
+const EMPTY: ClientFormValues = {
   name: "",
   email: "",
   phone: "",
   document: "",
-  document_type: "CPF",
+  document_type: "cpf",
   address: "",
   city: "",
   state: "",
@@ -29,12 +34,16 @@ export default function ClientQuickForm({
   onClose,
   onCreated,
 }: ClientQuickFormProps) {
-  const [form, setForm] = useState(EMPTY);
+  const [form, setForm] = useState<ClientFormValues>(EMPTY);
+  const [fieldErrors, setFieldErrors] = useState<
+    Partial<Record<keyof ClientFormValues, string>>
+  >({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const reset = () => {
     setForm(EMPTY);
+    setFieldErrors({});
     setError(null);
   };
 
@@ -43,30 +52,26 @@ export default function ClientQuickForm({
     onClose();
   };
 
+  function update<K extends keyof ClientFormValues>(
+    key: K,
+    value: ClientFormValues[K],
+  ) {
+    setForm((prev) => ({ ...prev, [key]: value }));
+    setFieldErrors((prev) => ({ ...prev, [key]: undefined }));
+  }
+
   const handleSave = async () => {
     setError(null);
-    if (!form.name.trim()) {
-      setError("Informe o nome do cliente.");
-      return;
-    }
-    if (!form.document.trim()) {
-      setError("Informe o documento (CPF/CNPJ).");
+    const parsed = parseClientForm(form);
+    if (!parsed.success) {
+      setFieldErrors(parsed.fieldErrors);
+      setError(parsed.formError ?? "Verifique os campos do formulário.");
       return;
     }
 
     setSaving(true);
     try {
-      const created = await clientService.create({
-        name: form.name.trim(),
-        email: form.email.trim() || undefined,
-        phone: form.phone.trim() || undefined,
-        document: form.document.trim(),
-        document_type: form.document_type.toUpperCase() as "cpf" | "cnpj",
-        address: form.address.trim() || undefined,
-        city: form.city.trim() || undefined,
-        state: form.state.trim() || undefined,
-        zip_code: form.zip_code.trim() || undefined,
-      });
+      const created = await clientService.create(clientFormToPayload(parsed.data));
       onCreated(created);
       reset();
       onClose();
@@ -105,19 +110,22 @@ export default function ClientQuickForm({
         <Input
           label="Nome *"
           value={form.name}
-          onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+          onChange={(e) => update("name", e.target.value)}
+          error={fieldErrors.name}
         />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input
-            label="Telefone"
+            label="Telefone *"
             value={form.phone}
-            onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
+            onChange={(e) => update("phone", e.target.value)}
+            error={fieldErrors.phone}
           />
           <Input
-            label="E-mail"
+            label="E-mail *"
             type="email"
             value={form.email}
-            onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
+            onChange={(e) => update("email", e.target.value)}
+            error={fieldErrors.email}
           />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -125,9 +133,8 @@ export default function ClientQuickForm({
             <Input
               label="Documento *"
               value={form.document}
-              onChange={(e) =>
-                setForm((p) => ({ ...p, document: e.target.value }))
-              }
+              onChange={(e) => update("document", e.target.value)}
+              error={fieldErrors.document}
             />
           </div>
           <div>
@@ -137,7 +144,10 @@ export default function ClientQuickForm({
             <select
               value={form.document_type}
               onChange={(e) =>
-                setForm((p) => ({ ...p, document_type: e.target.value }))
+                update(
+                  "document_type",
+                  e.target.value as ClientFormValues["document_type"],
+                )
               }
               className="w-full px-4 py-3 rounded-xl border border-glass-10 bg-glass-5 text-foreground"
             >
@@ -148,27 +158,25 @@ export default function ClientQuickForm({
         </div>
         <Input
           label="Endereço"
-          value={form.address}
-          onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))}
+          value={form.address ?? ""}
+          onChange={(e) => update("address", e.target.value)}
         />
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Input
             label="Cidade"
-            value={form.city}
-            onChange={(e) => setForm((p) => ({ ...p, city: e.target.value }))}
+            value={form.city ?? ""}
+            onChange={(e) => update("city", e.target.value)}
           />
           <Input
             label="UF"
             maxLength={2}
-            value={form.state}
-            onChange={(e) => setForm((p) => ({ ...p, state: e.target.value }))}
+            value={form.state ?? ""}
+            onChange={(e) => update("state", e.target.value)}
           />
           <Input
             label="CEP"
-            value={form.zip_code}
-            onChange={(e) =>
-              setForm((p) => ({ ...p, zip_code: e.target.value }))
-            }
+            value={form.zip_code ?? ""}
+            onChange={(e) => update("zip_code", e.target.value)}
           />
         </div>
       </div>

@@ -5,9 +5,8 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { authService, type UserProfile } from "@/lib/api/auth";
 import type { ApiError } from "@/lib/api/client";
-import { invalidateStorageReadUrl } from "@/lib/api/uploads";
-import { useAuth } from "@/contexts/AuthContext";
-import ImageUploadField from "@/components/ui/ImageUploadField";
+import { uploadImage } from "@/lib/api/uploads";
+import StorageImage from "@/components/ui/StorageImage";
 
 function RoleBadge({ role }: { role: string }) {
   const map: Record<string, { bg: string; label: string }> = {
@@ -59,11 +58,33 @@ function InfoRow({
   );
 }
 
+function Avatar({ name, url }: { name: string; url?: string }) {
+  const initials = name
+    .split(" ")
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase();
+
+  return (
+    <div className="relative w-24 h-24 rounded-full overflow-hidden shadow-lg border-2 border-glass-10 bg-gradient-to-br from-accent to-accent-detail flex items-center justify-center text-zinc-950 font-bold text-3xl">
+      {initials}
+      {url ? (
+        <StorageImage
+          src={url}
+          alt={name}
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+      ) : null}
+    </div>
+  );
+}
+
 function ProfileContent() {
-  const { patchUser, refreshUser } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
   useEffect(() => {
     authService
@@ -75,20 +96,21 @@ function ProfileContent() {
       .finally(() => setLoading(false));
   }, []);
 
-  const handleAvatarChange = async (objectKey: string) => {
+  const handleAvatarUpload = async (file: File) => {
     try {
+      setAvatarUploading(true);
       setError(null);
+      const { objectKey } = await uploadImage("avatar", file);
       const updated = await authService.updateProfile({
         avatar_url: objectKey,
       });
-      invalidateStorageReadUrl(objectKey);
       setProfile(updated);
-      patchUser({ avatar_url: updated.avatar_url });
-      await refreshUser();
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Falha ao salvar avatar.";
+        err instanceof Error ? err.message : "Falha ao enviar avatar.";
       setError(message);
+    } finally {
+      setAvatarUploading(false);
     }
   };
 
@@ -130,13 +152,29 @@ function ProfileContent() {
         {!loading && profile && (
           <>
             <div className="app-card p-8 flex flex-col sm:flex-row items-center sm:items-start gap-6">
-              <ImageUploadField
-                purpose="avatar"
-                preview="avatar"
-                name={profile.name}
-                value={profile.avatar_url ?? ""}
-                onChange={(key) => void handleAvatarChange(key)}
-              />
+              <div className="flex flex-col items-center gap-3">
+                <Avatar name={profile.name} url={profile.avatar_url} />
+                <label className="inline-flex">
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    disabled={avatarUploading}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) void handleAvatarUpload(file);
+                      e.target.value = "";
+                    }}
+                  />
+                  <span
+                    className={`text-xs text-accent hover:text-accent-detail cursor-pointer underline ${
+                      avatarUploading ? "opacity-50 pointer-events-none" : ""
+                    }`}
+                  >
+                    {avatarUploading ? "Enviando…" : "Alterar foto"}
+                  </span>
+                </label>
+              </div>
               <div className="flex flex-col items-center sm:items-start gap-2 text-center sm:text-left">
                 <h2 className="text-2xl font-semibold text-foreground">
                   {profile.name}

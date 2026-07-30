@@ -28,6 +28,27 @@ export interface RegisterRequest {
   role?: 'admin' | 'manager' | 'employee';
 }
 
+export interface ProvisionRequest {
+  company_name: string;
+  cnpj?: string;
+  admin_name: string;
+  admin_email: string;
+  admin_password: string;
+}
+
+export interface ProvisionResponse {
+  tenant: {
+    id: string;
+    company_name: string;
+    plan: string;
+    status: string;
+  };
+  auth?: LoginResponse;
+  message?: string;
+  verification_required: boolean;
+  verification_sent?: boolean;
+}
+
 /** Shape returned by POST /api/v1/auth/register (Go: c.JSON(201, userInfo)) */
 export interface RegisterResponse {
   id: string;
@@ -76,6 +97,31 @@ export const authService = {
           status === 401
             ? 'Credenciais inválidas'
             : body?.message ?? body?.error ?? 'Erro ao fazer login';
+        throw { message, status } as ApiError;
+      }
+      throw { message: 'Erro ao conectar ao servidor' } as ApiError;
+    }
+  },
+
+  /**
+   * POST /api/v1/auth/provision — public SaaS signup (tenant + first admin).
+   */
+  async provision(payload: ProvisionRequest): Promise<ProvisionResponse> {
+    try {
+      const { data } = await axios.post<ProvisionResponse>(
+        `${API_CONFIG.baseURL}${API_CONFIG.endpoints.auth.provision}`,
+        payload,
+        { headers: { 'Content-Type': 'application/json' } },
+      );
+      return data;
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const body = err.response?.data as { message?: string; error?: string } | undefined;
+        const status = err.response?.status;
+        const message =
+          status === 409
+            ? 'Este e-mail já está em uso.'
+            : body?.message ?? body?.error ?? 'Erro ao criar a empresa';
         throw { message, status } as ApiError;
       }
       throw { message: 'Erro ao conectar ao servidor' } as ApiError;

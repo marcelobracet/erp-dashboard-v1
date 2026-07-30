@@ -16,11 +16,27 @@ export const DEFAULT_ROLE_PERMISSIONS: RolePermissionsMap = {
   admin: [
     { resource: "dashboard", actions: CRUD },
     { resource: "clients", actions: CRUD },
-    { resource: "products", actions: CRUD },
+    { resource: "products", actions: [...CRUD, "export"] },
     { resource: "quotes", actions: QUOTES_ADMIN_ACTIONS },
     { resource: "users", actions: CRUD },
     { resource: "settings", actions: CRUD },
   ],
+  // Alinhado a DefaultPermissions() da API (erp-api/internal/domain/auth).
+  manager: [
+    { resource: "dashboard", actions: ["read"] },
+    { resource: "clients", actions: ["read", "create", "update"] },
+    { resource: "products", actions: ["read", "create", "update", "export"] },
+    { resource: "quotes", actions: ["read", "create", "update", "update_status"] },
+    { resource: "users", actions: ["read"] },
+    { resource: "settings", actions: ["read"] },
+  ],
+  employee: [
+    { resource: "dashboard", actions: ["read"] },
+    { resource: "clients", actions: ["read"] },
+    { resource: "products", actions: ["read"] },
+    { resource: "quotes", actions: ["read", "create", "update"] },
+  ],
+  // Alias legado (tokens antigos / NextAuth residue).
   user: [
     { resource: "dashboard", actions: ["read"] },
     { resource: "clients", actions: ["read"] },
@@ -42,6 +58,14 @@ const ROLE_ALIASES: Record<string, string> = {
   "erp-user": "user",
   usuario: "user",
   user: "user",
+
+  manager: "manager",
+  gerente: "manager",
+  "erp-manager": "manager",
+
+  employee: "employee",
+  funcionario: "employee",
+  "erp-employee": "employee",
 };
 
 function normalizeRole(role: string): string {

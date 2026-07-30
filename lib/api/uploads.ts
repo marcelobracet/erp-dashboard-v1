@@ -31,69 +31,8 @@ export interface UploadImageResult {
 const MAX_BYTES = 2 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
-const CACHE_STORAGE_KEY = "erp.gcs-read-url-cache";
-const CACHE_SAFETY_MS = 60_000;
-
 type ReadUrlCacheEntry = { url: string; expiresAt: number };
 const readUrlCache = new Map<string, ReadUrlCacheEntry>();
-
-function loadPersistedCache(): void {
-  if (typeof window === "undefined") return;
-  try {
-    const raw = sessionStorage.getItem(CACHE_STORAGE_KEY);
-    if (!raw) return;
-    const parsed = JSON.parse(raw) as Record<string, ReadUrlCacheEntry>;
-    const now = Date.now();
-    for (const [key, entry] of Object.entries(parsed)) {
-      if (entry.expiresAt > now + CACHE_SAFETY_MS) {
-        readUrlCache.set(key, entry);
-      }
-    }
-  } catch {
-    // ignore corrupt cache
-  }
-}
-
-function persistCacheEntry(objectKey: string, entry: ReadUrlCacheEntry): void {
-  if (typeof window === "undefined") return;
-  try {
-    const raw = sessionStorage.getItem(CACHE_STORAGE_KEY);
-    const parsed = raw
-      ? (JSON.parse(raw) as Record<string, ReadUrlCacheEntry>)
-      : {};
-    parsed[objectKey] = entry;
-    const now = Date.now();
-    for (const [key, value] of Object.entries(parsed)) {
-      if (value.expiresAt <= now + CACHE_SAFETY_MS) {
-        delete parsed[key];
-      }
-    }
-    sessionStorage.setItem(CACHE_STORAGE_KEY, JSON.stringify(parsed));
-  } catch {
-    // ignore quota errors
-  }
-}
-
-function setCacheEntry(objectKey: string, url: string, expiresInSec: number): void {
-  const entry: ReadUrlCacheEntry = {
-    url,
-    expiresAt: Date.now() + expiresInSec * 1000,
-  };
-  readUrlCache.set(objectKey, entry);
-  persistCacheEntry(objectKey, entry);
-}
-
-function getCacheEntry(objectKey: string): string | null {
-  const cached = readUrlCache.get(objectKey);
-  if (cached && cached.expiresAt > Date.now() + CACHE_SAFETY_MS) {
-    return cached.url;
-  }
-  return null;
-}
-
-if (typeof window !== "undefined") {
-  loadPersistedCache();
-}
 
 function validateImageFile(file: File): void {
   if (!ALLOWED_TYPES.has(file.type)) {
@@ -101,23 +40,6 @@ function validateImageFile(file: File): void {
   }
   if (file.size > MAX_BYTES) {
     throw new Error("Arquivo muito grande (máx. 2 MB).");
-  }
-}
-
-/** Drop cached signed URL (e.g. after avatar overwrite at same object key). */
-export function invalidateStorageReadUrl(stored: string): void {
-  const objectKey = normalizeObjectKey(stored.trim());
-  if (!objectKey) return;
-  readUrlCache.delete(objectKey);
-  if (typeof window === "undefined") return;
-  try {
-    const raw = sessionStorage.getItem(CACHE_STORAGE_KEY);
-    if (!raw) return;
-    const parsed = JSON.parse(raw) as Record<string, ReadUrlCacheEntry>;
-    delete parsed[objectKey];
-    sessionStorage.setItem(CACHE_STORAGE_KEY, JSON.stringify(parsed));
-  } catch {
-    // ignore
   }
 }
 
@@ -130,15 +52,21 @@ export async function getStorageReadUrl(stored: string): Promise<string> {
   }
 
   const objectKey = normalizeObjectKey(trimmed);
-  const cached = getCacheEntry(objectKey);
-  if (cached) return cached;
+  const cached = readUrlCache.get(objectKey);
+  if (cached && cached.expiresAt > Date.now() + 60_000) {
+    return cached.url;
+  }
 
   const res = await apiClient.get<ReadUrlResponse>(
     API_CONFIG.endpoints.uploads.readUrl,
     { params: { object_key: objectKey } },
   );
 
-  setCacheEntry(objectKey, res.read_url, res.expires_in);
+  readUrlCache.set(objectKey, {
+    url: res.read_url,
+    expiresAt: Date.now() + res.expires_in * 1000,
+  });
+
   return res.read_url;
 }
 
@@ -158,8 +86,6 @@ export async function uploadImage(
     },
   );
 
-  invalidateStorageReadUrl(signed.object_key);
-
   const putRes = await fetch(signed.upload_url, {
     method: "PUT",
     headers: { "Content-Type": signed.content_type },
@@ -170,7 +96,10 @@ export async function uploadImage(
     throw new Error("Falha ao enviar arquivo para o armazenamento.");
   }
 
-  setCacheEntry(signed.object_key, signed.read_url, signed.expires_in);
+  readUrlCache.set(signed.object_key, {
+    url: signed.read_url,
+    expiresAt: Date.now() + signed.expires_in * 1000,
+  });
 
   return {
     objectKey: signed.object_key,

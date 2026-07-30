@@ -9,6 +9,7 @@ import Input from '@/components/ui/Input';
 import { userService, User } from '@/lib/api/services';
 import { authService } from '@/lib/api/auth';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useAuth } from '@/contexts/AuthContext';
 import { formatDate } from '@/lib/utils/format';
 import type { ApiError } from '@/lib/api/client';
 
@@ -91,6 +92,7 @@ export default function UsersManagement({ embedded }: { embedded?: boolean }) {
   const [showPassword, setShowPassword] = useState(false);
 
   const { hasPermission, hasRole } = usePermissions();
+  const { user: currentUser } = useAuth();
 
   useEffect(() => {
     setMounted(true);
@@ -183,6 +185,10 @@ export default function UsersManagement({ embedded }: { embedded?: boolean }) {
   };
 
   const handleDelete = async (id: string) => {
+    if (id === currentUser?.id) {
+      alert('Você não pode excluir sua própria conta.');
+      return;
+    }
     if (!confirm('Tem certeza que deseja excluir este usuário?')) return;
     try {
       await userService.delete(id);
@@ -224,11 +230,19 @@ export default function UsersManagement({ embedded }: { embedded?: boolean }) {
     );
   }
 
-  const filteredUsers = users.filter(
-    (u) =>
+  const filteredUsers = users.filter((u) => {
+    if (u.id === currentUser?.id) return false;
+    if (
+      currentUser?.email &&
+      u.email.toLowerCase() === currentUser.email.toLowerCase()
+    ) {
+      return false;
+    }
+    return (
       u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+      u.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  });
 
   const columns = [
     {

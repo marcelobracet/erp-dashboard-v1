@@ -54,3 +54,10 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Deploy de produção (TCC)
+
+1. Na Vercel, configure `NEXT_PUBLIC_API_URL` apontando para a API pública (veja `.env.production.example`).
+2. Não habilite `NEXT_PUBLIC_AUTH_DISABLED`, `NEXT_PUBLIC_PRODUCTS_LOCAL` nem `NEXT_PUBLIC_QUOTES_LOCAL` em produção.
+3. A API (Go) sobe na GCP (Compute Engine) conforme `erp-api/deployments/gcp/README.md`.
+4. Domínios sugeridos: `app.onmarmoraria.com.br` (painel) e `api.onmarmoraria.com.br` (API).

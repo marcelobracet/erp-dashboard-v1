@@ -109,13 +109,16 @@ export default function LoginPage() {
           </div>
 
           <p className="mt-4 text-center text-sm text-text-60">
-            Precisa criar um acesso?{' '}
+            Primeira vez aqui?{' '}
             <a
-              href="/auth/register"
+              href="/auth/onboarding"
               className="font-medium text-accent-detail hover:text-accent-muted transition-colors underline-offset-2 hover:underline"
             >
-              Cadastrar usuário
+              Abrir minha marmoraria
             </a>
+          </p>
+          <p className="mt-2 text-center text-xs text-text-40">
+            Funcionários entram pelo login — o administrador convida a equipe em Configurações.
           </p>
         </div>
 
