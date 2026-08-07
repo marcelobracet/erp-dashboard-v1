@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 export type PermissionAction = "read" | "create" | "update" | "delete" | string;
 
 export type Permission = {
@@ -94,29 +93,12 @@ export function resolveAppRoles(rawRoles: string[]): string[] {
   return Array.from(new Set(resolved));
 }
 
-function isRolePermissionsMap(input: unknown): input is RolePermissionsMap {
-  if (!input || typeof input !== "object") return false;
-  for (const [role, perms] of Object.entries(
-    input as Record<string, unknown>,
-  )) {
-    if (typeof role !== "string") return false;
-    if (!Array.isArray(perms)) return false;
-    for (const p of perms) {
-      if (!p || typeof p !== "object") return false;
-      const resource = (p as { resource?: unknown }).resource;
-      const actions = (p as { actions?: unknown }).actions;
-      if (typeof resource !== "string") return false;
-      if (!Array.isArray(actions)) return false;
-    }
-  }
-  return true;
-}
-
 /**
  * Permissões por role — o backend valida via JWT (`resource:action`).
  * Não há endpoint HTTP separado; evita chamadas inválidas a `/permissions`.
  */
 export async function fetchPermissionsFromApi(
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mantido para compatibilidade de assinatura com o call site
   _accessToken: string,
 ): Promise<RolePermissionsMap | null> {
   return null;

@@ -18,6 +18,8 @@ function ClientsContent() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [formData, setFormData] = useState<Partial<Client>>({});
+  const [saving, setSaving] = useState(false);
   const { hasPermission } = usePermissions();
 
   const fetchClients = async () => {
@@ -113,7 +115,32 @@ function ClientsContent() {
 
   const handleEdit = (client: Client) => {
     setSelectedClient(client);
+    setFormData(client);
     setIsModalOpen(true);
+  };
+
+  const handleSave = async () => {
+    if (!formData.name?.trim()) {
+      alert("Nome é obrigatório");
+      return;
+    }
+    setSaving(true);
+    try {
+      if (selectedClient) {
+        await clientService.update(selectedClient.id, formData);
+      } else {
+        await clientService.create(formData);
+      }
+      setIsModalOpen(false);
+      setSelectedClient(null);
+      setFormData({});
+      await fetchClients();
+    } catch (error) {
+      console.error("Failed to save client:", error);
+      alert("Erro ao salvar cliente");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -144,6 +171,7 @@ function ClientsContent() {
               variant="primary"
               onClick={() => {
                 setSelectedClient(null);
+                setFormData({});
                 setIsModalOpen(true);
               }}
             >
@@ -236,43 +264,65 @@ function ClientsContent() {
           onClose={() => {
             setIsModalOpen(false);
             setSelectedClient(null);
+            setFormData({});
           }}
           title={selectedClient ? "Editar Cliente" : "Novo Cliente"}
           size="md"
           footer={
             <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setIsModalOpen(false)}>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setSelectedClient(null);
+                  setFormData({});
+                }}
+                disabled={saving}
+              >
                 Cancelar
               </Button>
-              <Button
-                onClick={async () => {
-                  setIsModalOpen(false);
-                  fetchClients();
-                }}
-              >
-                Salvar
+              <Button onClick={handleSave} disabled={saving}>
+                {saving ? "Salvando..." : "Salvar"}
               </Button>
             </div>
           }
         >
           <div className="space-y-4">
-            <Input label="Nome" defaultValue={selectedClient?.name || ""} />
+            <Input
+              label="Nome"
+              value={formData.name || ""}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
+            />
             <Input
               label="Email"
               type="email"
-              defaultValue={selectedClient?.email || ""}
+              value={formData.email || ""}
+              onChange={(e) =>
+                setFormData({ ...formData, email: e.target.value })
+              }
             />
             <Input
               label="Telefone"
-              defaultValue={selectedClient?.phone || ""}
+              value={formData.phone || ""}
+              onChange={(e) =>
+                setFormData({ ...formData, phone: e.target.value })
+              }
             />
             <Input
               label="Documento"
-              defaultValue={selectedClient?.document || ""}
+              value={formData.document || ""}
+              onChange={(e) =>
+                setFormData({ ...formData, document: e.target.value })
+              }
             />
             <Input
               label="Endereço"
-              defaultValue={selectedClient?.address || ""}
+              value={formData.address || ""}
+              onChange={(e) =>
+                setFormData({ ...formData, address: e.target.value })
+              }
             />
           </div>
         </Modal>

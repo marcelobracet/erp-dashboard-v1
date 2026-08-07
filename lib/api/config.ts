@@ -48,6 +48,11 @@ export const API_CONFIG = {
       sign: "/api/v1/uploads/sign",
       readUrl: "/api/v1/uploads/read-url",
     },
+    roadmap: {
+      items: "/api/v1/roadmap",
+      itemById: (id: string) => `/api/v1/roadmap/${id}`,
+      suggestions: "/api/v1/roadmap/suggestions",
+    },
   },
 } as const;
 

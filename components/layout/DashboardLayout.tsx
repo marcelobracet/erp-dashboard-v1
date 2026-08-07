@@ -1,6 +1,13 @@
 "use client";
 
-import React, { useId, useMemo, useRef, useState, useEffect } from "react";
+import React, {
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  useEffect,
+  useSyncExternalStore,
+} from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,7 +20,18 @@ import {
   type Theme,
 } from "@/lib/theme";
 import { getSupportWhatsAppHref } from "@/lib/support";
-import { SubscriptionGate } from "@/components/billing/SubscriptionGate";
+
+// No-op store: subscribe never fires, but the client/server snapshots differ
+// on purpose so React flips this to `true` right after hydration, without a
+// manual setState() call inside an effect.
+const noopSubscribe = () => () => {};
+function useMounted(): boolean {
+  return useSyncExternalStore(
+    noopSubscribe,
+    () => true,
+    () => false,
+  );
+}
 
 interface NavItem {
   name: string;
@@ -168,7 +186,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useMounted();
   const [currentDate, setCurrentDate] = useState("");
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [theme, setThemeState] = useState<Theme>("light");
@@ -200,19 +218,22 @@ export default function DashboardLayout({
     return role;
   }, [user?.role]);
 
-  // Prevent hydration mismatch by only rendering after mount
+  // Deterministic date/theme, read only after mount to avoid hydration mismatch.
   useEffect(() => {
-    setMounted(true);
-    // Use deterministic date formatting to prevent hydration mismatch
-    const now = new Date();
-    const day = String(now.getDate()).padStart(2, "0");
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const year = now.getFullYear();
-    setCurrentDate(`${day}/${month}/${year}`);
+    function syncDateAndTheme() {
+      // Use deterministic date formatting to prevent hydration mismatch
+      const now = new Date();
+      const day = String(now.getDate()).padStart(2, "0");
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+      const year = now.getFullYear();
+      setCurrentDate(`${day}/${month}/${year}`);
 
-    const preferred = getPreferredTheme();
-    setThemeState(preferred);
-    setTheme(preferred);
+      const preferred = getPreferredTheme();
+      setThemeState(preferred);
+      setTheme(preferred);
+    }
+
+    syncDateAndTheme();
   }, []);
 
   useEffect(() => {
@@ -229,12 +250,11 @@ export default function DashboardLayout({
       if (e.key === "Escape") setProfileMenuOpen(false);
     };
 
-    document.addEventListener("pointerdown", onPointerDown, { capture: true });
+    const pointerDownOptions: AddEventListenerOptions = { capture: true };
+    document.addEventListener("pointerdown", onPointerDown, pointerDownOptions);
     document.addEventListener("keydown", onKeyDown);
     return () => {
-      document.removeEventListener("pointerdown", onPointerDown, {
-        capture: true,
-      } as any);
+      document.removeEventListener("pointerdown", onPointerDown, pointerDownOptions);
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [profileMenuOpen]);
@@ -618,8 +638,6 @@ export default function DashboardLayout({
         {/* Page Content */}
         <main className="p-4 lg:p-8">{children}</main>
       </div>
-
-      <SubscriptionGate />
     </div>
   );
 }

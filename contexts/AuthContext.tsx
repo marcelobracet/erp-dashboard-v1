@@ -41,35 +41,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Restore session on mount: if a token exists in localStorage, fetch the profile.
   useEffect(() => {
-    if (isAuthDisabled()) {
-      setUser(AUTH_DISABLED_USER);
-      setIsLoading(false);
-      return;
-    }
+    async function restoreSession() {
+      if (isAuthDisabled()) {
+        setUser(AUTH_DISABLED_USER);
+        setIsLoading(false);
+        return;
+      }
 
-    const token =
-      typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+      const token =
+        typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
 
-    if (!token) {
-      setIsLoading(false);
-      return;
-    }
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
 
-    authService
-      .getProfile()
-      .then((profile) => {
+      try {
+        const profile = await authService.getProfile();
         if (profile.tenant_id?.trim()) {
           setTenantIdSync(profile.tenant_id);
         }
         setUser(profile);
-      })
-      .catch(() => {
+      } catch {
         // Token expired or invalid — clear storage silently.
         apiClient.removeToken();
         setTenantIdSync(null);
-      })
-      .finally(() => setIsLoading(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    restoreSession();
   }, []);
 
   // Reload role permissions whenever the user changes.

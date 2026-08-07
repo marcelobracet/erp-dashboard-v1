@@ -94,10 +94,6 @@ function approved(quotes: MockQuote[]) {
   return quotes.filter((q) => q.status === 'approved');
 }
 
-function rejected(quotes: MockQuote[]) {
-  return quotes.filter((q) => q.status === 'rejected');
-}
-
 /** Orçamentos ainda sem decisão comercial (não aprovado / não rejeitado / não cancelado). */
 function isOpenStatus(status: MockQuote['status']): boolean {
   return status === 'pending' || status === 'draft' || status === 'sent';

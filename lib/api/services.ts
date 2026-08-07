@@ -293,8 +293,8 @@ export const quoteService = {
         | { error?: string; message?: string }
       >(API_CONFIG.endpoints.quotes.list);
 
-      if (!Array.isArray(res) && isErrorEnvelope(res) && !('quotes' in (res as any)) && !('data' in (res as any))) {
-        const msg = (res as any).error ?? (res as any).message;
+      if (!Array.isArray(res) && isErrorEnvelope(res) && !('quotes' in (res as Record<string, unknown>)) && !('data' in (res as Record<string, unknown>))) {
+        const msg = (res as Record<string, unknown>).error ?? (res as Record<string, unknown>).message;
         if (typeof msg === 'string' && msg.trim()) throw new Error(msg);
       }
 
@@ -312,13 +312,13 @@ export const quoteService = {
         | { error?: string; message?: string }
       >(API_CONFIG.endpoints.quotes.byId(id));
 
-      if (isErrorEnvelope(res) && !('quote' in (res as any))) {
-        const msg = (res as any).error ?? (res as any).message;
+      if (isErrorEnvelope(res) && !('quote' in (res as Record<string, unknown>))) {
+        const msg = (res as Record<string, unknown>).error ?? (res as Record<string, unknown>).message;
         if (typeof msg === 'string' && msg.trim()) throw new Error(msg);
       }
 
-      if (res && typeof res === 'object' && 'quote' in (res as any) && (res as any).quote) {
-        return (res as any).quote as Quote;
+      if (res && typeof res === 'object' && 'quote' in (res as Record<string, unknown>) && (res as Record<string, unknown>).quote) {
+        return (res as Record<string, unknown>).quote as Quote;
       }
 
       return res as Quote;

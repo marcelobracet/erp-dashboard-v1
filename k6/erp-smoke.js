@@ -75,7 +75,7 @@ export function setup() {
   return { token };
 }
 
-export default function ({ token }) {
+export default function smokeTest({ token }) {
   const headers = authHeaders(token);
 
   const endpoints = {
