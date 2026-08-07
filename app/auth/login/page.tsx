@@ -101,23 +101,7 @@ export default function LoginPage() {
           {/* Form */}
           <LoginForm />
 
-          {/* Divider + register link */}
-          <div className="mt-6 flex items-center gap-3">
-            <div className="flex-1 h-px bg-glass-10" />
-            <span className="text-xs text-text-40">ou</span>
-            <div className="flex-1 h-px bg-glass-10" />
-          </div>
-
-          <p className="mt-4 text-center text-sm text-text-60">
-            Primeira vez aqui?{' '}
-            <a
-              href="/auth/onboarding"
-              className="font-medium text-accent-detail hover:text-accent-muted transition-colors underline-offset-2 hover:underline"
-            >
-              Abrir minha marmoraria
-            </a>
-          </p>
-          <p className="mt-2 text-center text-xs text-text-40">
+          <p className="mt-4 text-center text-xs text-text-40">
             Funcionários entram pelo login — o administrador convida a equipe em Configurações.
           </p>
         </div>
